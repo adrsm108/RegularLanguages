@@ -75,7 +75,7 @@ EntireFAQ[_] = False;
 
 PackageExport["EquivalentFAQ"]
 EquivalentFAQ::usage = "EquivalentFAQ[A1, A2] is True if A1 and A2 are automata that recognize the same language.
-EquivalentFAQ[A_1, A_2, ...] yields true if all A_i are equivalent automata.
+EquivalentFAQ[A1, A2, ...] yields true if all Ai are equivalent automata.
 EquivalentFAQ[A] yields true if A is an automaton.";
 EquivalentFAQ[A1_?FAQ, A2_?FAQ] := productStateTerminalPairNoneTrue[A1, A2, Xor];
 EquivalentFAQ[A_?FAQ] = True;
@@ -87,7 +87,7 @@ EquivalentFAQ[Ai : Repeated[_, {3, Infinity}]] := With[
 
 PackageExport["SubsetFAQ"]
 SubsetFAQ::usage = "SubsetFAQ[A1, A2] returns True if the language recognized by automaton A1 is a subset of the language recognized by automaton A2.
-SubsetFAQ[A, A_1, A_2, ...] yields True if SubsetFAQ[A, A_i] is true for all A_i.
+SubsetFAQ[A, A1, A2, ...] yields True if SubsetFAQ[A, Ai] is true for all Ai.
 SubsetFAQ[A] represents an operator form of SubsetFAQ that can be applied to an expression.";
 SubsetFAQ[A1_?FAQ, A2_?FAQ] := productStateTerminalPairNoneTrue[A1, A2, #1 && ! #2 &];
 SubsetFAQ[_, _] = False;
@@ -99,9 +99,10 @@ SubsetFAQ[A_, Ai : Repeated[_, {2, Infinity}]] := AllTrue[{Ai}, SubsetFAQ[A]];
 
 PackageExport["FAExpression"]
 FAExpression::usage = "FAExpression[A] returns A as an automaton with head NFA or DFA.";
-FAExpression::inv = "FAExpression expects a valid automaton, or graph with an Automaton annotation, but recieved `1`.";
+FAExpression::inv = "FAExpression expects an automaton expression, or graph with an \"Automaton\" annotation, but recieved `1`.";
 FAExpression[A : (_NFA | _DFA)] := A;
-FAExpression[g_] := when[AnnotationValue[g, "Automaton"], _?FAExpressionQ,
+FAExpression[g_] := when[Quiet@AnnotationValue[g, "Automaton"],
+  _?FAExpressionQ,
   Message[FAExpression::inv, HoldForm[FAExpression[g]], g,
     "Automaton"]; $Failed];
 
@@ -110,10 +111,10 @@ FAType::usage = "FAType[A] returns NFA if A is an NFA, or DFA if A is a DFA.";
 FAType[A_?FAQ] := Head@FAExpression[A];
 
 PackageExport["Transitions"]
-Transitions::usage = "Transitions[dfastate] gives the transition table for a dfa state as the association <|a_1 -> q_1, ...|>, where a_i is a character in the input alphabet, and q_i is the id of \[Delta](dfastate, a_i)].
-Transitions[nfastate] gives the transition table for an nfa state as the association <|a_1 -> list_i, ...|>, where a_i is a character in the input alphabet, and list_i is the list {q_1, q_2, ...} of state ids corresponding to \[Delta](nfastate, a_i)].
+Transitions::usage = "Transitions[dfastate] gives the transition table for a dfa state as the association <|a1 -> q1, ...|>, where ai is a character in the input alphabet, and qi is the id of \[Delta](dfastate, ai)].
+Transitions[nfastate] gives the transition table for an nfa state as the association <|a1 -> listi, ...|>, where ai is a character in the input alphabet, and listi is the list {q1, q2, ...} of state ids corresponding to \[Delta](nfastate, ai)].
 Transitions[q, spec...] is equivalent to Lookup[Transitions[q], spec...] if q is an explicit DFA or NFA state.
-Transitions[{q_1, q_2, ...}, spec...] is equivalent to Lookup[{Transitions[q_1], Transitions[q_2], ...}, spec...], provided all q_i have head NFAState, or all q_i have head DFAState.";
+Transitions[{q1, q2, ...}, spec...] is equivalent to Lookup[{Transitions[q1], Transitions[q2], ...}, spec...], provided all qi have head NFAState, or all qi have head DFAState.";
 Transitions[(DFAState | NFAState)[_, d_, ___]] := d;
 Transitions[(DFAState | NFAState)[_, d_, ___], rest__] := Lookup[d, rest];
 Transitions[states : {___DFAState | ___NFAState}, rest__] := Lookup[states[[All, 2]], rest];
@@ -125,7 +126,7 @@ StateID[(DFAState | NFAState)[id_, _, ___]] := id;
 
 PackageExport["StateSuccessors"]
 StateSuccessors::usage = "StateSuccessors[q] returns a list of IDs comprising the set of states to which q has an outgoing transition.
-StateSuccessors[q, {a_1, a_2, ...}] returns the set of states to which q has an outgoing transition on one of the symbols a_i.";
+StateSuccessors[q, {a1, a2, ...}] returns the set of states to which q has an outgoing transition on one of the symbols ai.";
 StateSuccessors[NFAState[_, d_, ___], (All | PatternSequence[])] := Union @@ Values@d;
 StateSuccessors[NFAState[_, d_, ___], symbols_List] := Union @@ Lookup[d, symbols, {}];
 StateSuccessors[DFAState[_, d_, ___], (All | PatternSequence[])] := DeleteDuplicates@Values@d;
@@ -134,7 +135,7 @@ StateSuccessors[symbols : (_List | All)][s_?StateQ] := StateSuccessors[s, symbol
 
 PackageExport["States"]
 States::usage = "States[A] returns an association <|id -> state, ...|> of all states in the DFA or NFA A.
-States[A, \"Values\"] returns a list {state_1, state_2, ...} of all states in the DFA or NFA A.
+States[A, \"Values\"] returns a list {state1, state2, ...} of all states in the DFA or NFA A.
 States[A, prop] returns an association <|id -> state, ...|> of states with the property prop. Valid properties include  \"Initial\", \"Terminal\", and \"Nonterminal\".
 States[A, prop, \"Values\"] returns a list of states with the property prop.";
 SetAttributes[States, Listable];
@@ -157,7 +158,7 @@ States[g_Graph?FAGraphQ, rest___] := States[FAExpression[g], rest];
 PackageExport["IDs"]
 IDs::usage = "IDs[A] returns a list of state names for the DFA or NFA A.
 IDs[A, prop] gives the IDs for states with property prop. Valid properties include: \"Initial\", \"Terminal\", and \"Nonterminal\".
-IDs[A, \"Index\"] returns an association of state ids and their indices: <|id_1 -> 1, id_2 -> 2 ...|>.";
+IDs[A, \"Index\"] returns an association of state ids and their indices: <|id1 -> 1, id2 -> 2 ...|>.";
 SetAttributes[IDs, Listable];
 IDs[DFA[asc_?dfaAscQ] | NFA[asc_?nfaAscQ]] := Keys@asc["states"];
 IDs[DFA[asc_?dfaAscQ] | NFA[asc_?nfaAscQ], "Initial"] := asc["initial"];
@@ -250,10 +251,10 @@ ReindexFA[A_?FAQ, allComponents_ : False] :=
 
 PackageExport["TransitiveClosure"]
 TransitiveClosure::usage = "TransitiveClosure[q, A] returns the transitive closure of state q in automaton A.
-TransitiveClosure[{q_1, q_2, ...}, A] returns the union (TransitiveClosure[q_2,A] \[Union] TransitiveClosure[q_2, A] \[Union] ...)
+TransitiveClosure[{q1, q2, ...}, A] returns the union (TransitiveClosure[q2,A] \[Union] TransitiveClosure[q2, A] \[Union] ...)
 TransitiveClosure[A] returns the transitive closure of the initial states of automaton A.
 TransitiveClosure[states, transitions] returns the transitive closure of the given states according to the given transition specifications. The parameter transitions should be an association or list of rules of the form q -> t, where q is a state id, and t is the transition table for q as an association or list of rules.
-TransitiveClosure[..., {a_1, a_2, ...}] gives the transitive closure over the set of symbols a_1, a_2, ...";
+TransitiveClosure[..., {a1, a2, ...}] gives the transitive closure over the set of symbols a1, a2, ...";
 TransitiveClosure::invstate = "State `1` not found.";
 TransitiveClosure[{}, ___] = {};
 TransitiveClosure[A_?FAQ, syms_List : All] := TransitiveClosure[IDs[A, "Initial"], States@A, syms];
@@ -277,7 +278,7 @@ TransitiveClosure[ids_List, Q_Association, syms : (_List | All) : All] :=
 PackageExport["EpsilonClosure"]
 EpsilonClosure::usage = "EpsilonClosure[A] computes the epsilon closure (that is, the transitive closure over the empty string) of the initial states in the Automaton A.
 EpsilonClosure[q, A] gives the epsilon closure of state q in A.
-EpsilonClosure[{q_1, q_2, ...}, A] gives EpsilonClosure[q_1, A] \[Union] EpsilonClosure[q_2, A] \[Union] ...
+EpsilonClosure[{q1, q2, ...}, A] gives EpsilonClosure[q1, A] \[Union] EpsilonClosure[q2, A] \[Union] ...
 EpsilonClosure[states, transitions] finds the epsilon closure of states in transitions, where transitions can be any transition specification recognized by TransitiveClosure. ";
 EpsilonClosure[A_?FAQ] :=
   TransitiveClosure[IDs[A, "Initial"], States@A, {Epsilon}];
@@ -285,7 +286,7 @@ EpsilonClosure[states_, transitions_] :=
   TransitiveClosure[states, transitions, {Epsilon}];
 
 PackageExport["StatesPartition"]
-StatesPartition::usage = "StatesPartition[dfa] returns a list of partition blocks for the states of dfa, according to the equivalence relation p~q \[DoubleLongLeftRightArrow] For all w\[Element]\!\(\*SuperscriptBox[\(\[CapitalSigma]\), \(*\)]\), \!\(\*OverscriptBox[\(\[Delta]\), \(^\)]\)(p,w) accepts if and only if \!\(\*OverscriptBox[\(\[Delta]\), \(^\)]\)(q,w) accepts";
+StatesPartition::usage = "StatesPartition[dfa] returns a list of partition blocks for the states of dfa according to the equivalence: p ~ q iff for all words w over the alphabet, reading w starting from state p ends in an accepting state exactly when the same is true starting from q.";
 StatesPartition[dfa_?DFAQ, indices_ : False] :=
   applyIf[indices, Map[IDs[dfa, "Index"], #, {-1}]&,
     Module[{equivQ},
@@ -327,7 +328,7 @@ FAReversal[A_?FAQ] := NFA[
   IDs[A, "Initial"]];
 
 PackageExport["FAIntersection"]
-FAIntersection::usage = "FAIntersection[A_1, A_2, ...] returns a DFA for the intersection of the languages recognized by the A_i.";
+FAIntersection::usage = "FAIntersection[A1, A2, ...] returns a DFA for the intersection of the languages recognized by the Ai.";
 FAIntersection[A_?FAQ] := A;
 FAIntersection[dfas : Repeated[_?DFAQ, {2, Infinity}]] :=
   productDFA[dfas, {Catenate[IDs[{dfas}, "Initial"]]}, AllTrue[TerminalQ]];
@@ -335,7 +336,7 @@ FAIntersection[Ai : Repeated[_?FAQ, {2, Infinity}]] :=
   productDFA[Ai, {EpsilonClosure /@ {Ai}}, AllTrue[AnyTrue[TerminalQ]]];
 
 PackageExport["FAUnion"]
-FAUnion::usage = "FAUnion[A_1, A_2, ...] returns a DFA for the union of the languages recognized by the A_i.";
+FAUnion::usage = "FAUnion[A1, A2, ...] returns a DFA for the union of the languages recognized by the Ai.";
 FAUnion[A_?FAQ] := A;
 FAUnion[dfas : Repeated[_?DFAQ, {2, Infinity}]] :=
   productDFA[dfas, {Catenate[IDs[{dfas}, "Initial"]]}, AnyTrue[TerminalQ]];
@@ -346,11 +347,11 @@ PackageExport["FASymmetricDifference"]
 FASymmetricDifference::usage = "FASymmetricDifference[A1, A2] returns a DFA for the symmetric difference of the languages recognized by A1 and A2.";
 FASymmetricDifference[dfas : Repeated[_?DFAQ, {2}]] :=
   productDFA[dfas, {Catenate[IDs[{dfas}, "Initial"]]}, Xor @@ (TerminalQ /@ #) &];
-FASymmetricDifference[Ai : Repeated[_?FAQ, {2}]] :=
+ASymmetricDifference[Ai : Repeated[_?FAQ, {2}]] :=
   productDFA[Ai, {EpsilonClosure /@ {Ai}}, Xor @@ (AnyTrue[TerminalQ] /@ #) &];
 
 PackageExport["FAConcat"]
-FAConcat::usage = "FAConcat[A_1, A_2, ...] gives an NFA accepting the concatenation of the languages recognized by the A_i.";
+FAConcat::usage = "FAConcat[A1, A2, ...] gives an NFA accepting the concatenation of the languages recognized by the Ai.";
 FAConcat[Ai : Repeated[_?FAQ, {2, Infinity}]] :=
   With[{nfas = NFA /@ {Ai}, n = Length@{Ai}},
     NFA[

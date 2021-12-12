@@ -24,7 +24,13 @@ Package["RegularLanguages`"]
 (* Exported Functions *)
 
 PackageExport["NFAState"]
-NFAState::usage = "NFAState[q, <|a -> {q_1, q_2 ...}, ...|>] represents the nonterminal state q in an NFA with transitions \[Delta](q, a) = {q_1, q_2, ...}.";
+NFAState::usage = "
+NFAState[q, <|a -> {q1, q2 ...}, ...|>] represents the nonterminal state q in an NFA with transitions \[Delta](q, a) = {q1, q2, ...}.
+  - Keys[NFAState[q, trns]] is equivalent to Keys[trns].
+  - Values[NFAState[q, trns]] is equivalent to Values[trns].
+NFAState[q, \[Delta], True] represents a terminal state.
+NFAState[q, \[Delta], {init, term}] represents a state which is initial if init is True, and terminal if term is True.
+NFAState[q, ...][a] gives the transition \[Delta](q, a). ";
 NFAState::invtrs = "The expression `1` is not a valid NFA transition table. A valid table maps symbols to lists of state ids.";
 NFAState[id_, d : {(_ -> _List) ...}, p___] :=
   NFAState[id, Association @@ d, p];
@@ -40,12 +46,19 @@ NFAState /: Values[NFAState[_, d_, ___]] := Values[d];
 PackageExport["NFAQ"]
 NFAQ::usage = "NFAQ[A] yields True if A is a valid NFA.";
 NFAQ[NFA[_?nfaAscQ]] = True;
-NFAQ[G_Graph] := NFAQ[AnnotationValue[G, "Automaton"]];
+NFAQ[g: (_Graph | Graph3D)] := NFAQ[Quiet@AnnotationValue[g, "Automaton"]];
 NFAQ[_] = False;
 
 PackageExport["NFA"]
-NFA::usage = "The head NFA represents a nondeterministic finite automaton.";
-NFA[a___, "states" -> states : {__NFAState}, b___] := NFA[a, "states" -> GroupBy[states, StateID, First], b];
+NFA::usage = "\
+The head NFA represents a nondeterministic finite automaton.
+NFA[{q1 -> t1, q2 -> t2, ...}, {q01, q02, ...}, {r1, r2, ...}] specifies an NFA with states q1, q2, ... initial states q01, q02, ..., final states r1, r2, ..., \
+where each ti is a list of transitions {a1 -> {s11, s12, ...}, a2 -> {s21, s22, ...}, ...}, with keys that are symbols in the alphabet, and values which are lists of states.
+  - Not all transitions must be explicitly specified; for any symbol u for which no transition is given from state q, it is assumed \[Delta](q, u) = { }.
+  - Not all states must be explicitly specified; states without keys are assumed to have empty transition sets for all symbols.
+NFA[...][{a1, a2, a3, ...}] returns True if the given NFA accepts the string of symbols a1 a2 a3...
+NFA[...][symbs, All] returns the sequence of transitions on the given symbols as a list of sets of states.
+NFA[...][symbs, spec] returns a subset of the transition sequence, where spec is any sequence specification.";
 NFA[OrderlessPatternSequence[
   "states" -> states : <|(_ -> _NFAState) ..|>,
   "initial" -> initial_List,
@@ -57,7 +70,6 @@ NFA[OrderlessPatternSequence[
     , "terminal" -> terminal
     , "alphabet" -> autoAlt[alphabet, Union @@ (Keys /@ states)]
   }];
-
 NFA[(List | Association)[stateRules : ((_ -> KeyValuePattern[{}]) ...)], initial_List, terminal_List] :=
   Check[
     With[{states = Association[{stateRules} /. {
@@ -74,7 +86,6 @@ NFA[(List | Association)[stateRules : ((_ -> KeyValuePattern[{}]) ...)], initial
         "terminal" -> terminal]],
     $Failed,
     {NFAState::invtrs}];
-
 NFA[nfa_NFA] := nfa; (* Evaporate, don't ask questions *)
 NFA[A_?FAQ] := ToNFA[A];  (* Automatically cast other automata *)
 NFA /: Graph[nfa : NFA[_?nfaAscQ], opts : OptionsPattern[{Graph, automatonGraph}]] :=
@@ -152,7 +163,7 @@ RandomNFA[statesin : (_List | _Integer), alphin : (_List | _Integer),
 
 PackageExport["NthFromLastNFA"]
 NthFromLastNFA::usage = "NthFromLastNFA[n] returns an NFA accepting the language of strings over {\"a\", \"b\"} whose n-th from last character is \"a\"
-NthFromLastNFA[n, c, {c_1, c_2, ...}] returns an NFA accepting the language of strings over {c_1, c_2, ...} whose n-th from last character is c.";
+NthFromLastNFA[n, c, {c1, c2, ...}] returns an NFA accepting the language of strings over {c1, c2, ...} whose n-th from last character is c.";
 NthFromLastNFA[n_] := NthFromLastNFA[n, "a", {"a", "b"}];
 NthFromLastNFA[n_, a_, alph_] := NFA[
   "states" -> Association[
@@ -263,8 +274,9 @@ primeGrids[ram_] := With[{primes = CreateDataStructure["LinkedList"],
   ]];
 
 PackageExport["MinimizeNFA"]
-MinimizeNFA::usage = "MinimizeNFA[nfa] finds an equivalent NFA with fewer states than the original through exhaustive search using the Kameda-Weiner algorithm.
-If a smaller NFA does not exist, the original is returned.";
+MinimizeNFA::usage = "
+MinimizeNFA[nfa] finds an equivalent NFA with fewer states than the original through exhaustive search using the Kameda-Weiner algorithm.
+  - If a smaller NFA does not exist, the original is returned.";
 MinimizeNFA[nfa_?NFAQ] :=
   Module[{B, nfaB, ram, rows, isCover, states, idxs, initidx, termidxs,
     grids, tryMakeLegitNFA, res},

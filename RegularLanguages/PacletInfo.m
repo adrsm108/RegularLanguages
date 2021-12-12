@@ -6,8 +6,8 @@
 Paclet[
   Name -> "RegularLanguages",
   Version -> "0.1",
-  MathematicaVersion -> "12.1+",
-  Description -> "",
+  MathematicaVersion -> "12.3+",
+  Description -> "Tools for working with regular languages and their representations.",
   Creator -> "Adam Smith",
   Extensions ->
     {

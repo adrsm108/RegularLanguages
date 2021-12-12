@@ -34,13 +34,19 @@ automatonGraph[A_, opts : OptionsPattern[{Graph, automatonGraph}]] :=
           EdgeForm[RGBColor[0.43111111111111117`, 0.26933333333333337`, 0.036000000000000004`]]]],
       VertexSize -> Which[
         n <= 1, 1,
+        n <= 5, {"Scaled", 0.15},
         n <= 10, 0.4,
         n <= 20, 0.5,
         n <= 30, 0.6,
         True, 0.7],
       VertexLabels -> Placed[Automatic,
         If[vlabels === "Automaton" || n <= 25,
-          Center, Tooltip]],
+          Center, Tooltip],
+        Which[ (* lists of lists are common, we don't want sporadic matrix formatting *)
+          MatrixQ[#], Style /@ #,
+          MatchQ[#, _Style] && MatrixQ@First[#], MapAt[Map@Style, #, 1],
+          True, #]&
+      ],
       VertexLabelStyle -> {Directive[AutoSpacing -> False]},
       EdgeStyle -> Directive[GrayLevel[0, 0.7], Arrowheads[Small]],
       EdgeLabels -> Placed["EdgeTag",
@@ -193,4 +199,3 @@ graphRegexArray[arr_] :=
   WkVoaKPItP9r1/+o3hx8/fDmytp+kDredOjs2zdAwosLR84N/wCKLn61aeH44t+uN\
   z0Ks1zPcNCAjjTicRT8Ac8WyVA="
 ];
-Protect[$defaultDFAIcon, $defaultNFAIcon];

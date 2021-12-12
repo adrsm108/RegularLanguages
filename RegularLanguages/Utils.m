@@ -30,6 +30,36 @@ throwIf[pred, val, tag] evaluates to Throw[val, tag] when pred[val] is true, and
 throwIf[pred_, val_] := If[pred[val], Throw[val]];
 throwIf[pred_, val_, tag_] := If[pred[val], Throw[val, tag]];
 
+(*PackageExport["ruleValueMatchQ"]*)
+OptionValue::invform = "Option `1` for `2` received unrecognized form `3`. Values for this option should match `4`.";
+
+optValueMatchesQ[f_, patt_][k_ -> v_] :=
+  MatchQ[v, patt] || Message[OptionValue::invform, k, f, v, patt] || False;
+
+PackageExport["OptionChecks"]
+OptionChecks::usage = "OptionChecks[f] gives {} by default.
+Setting OptionChecks[f] = {opt1 -> patt1, opt2 -> patt2, ...}, where the opt_i are options of f, and patt_i are patterns will ensure that \
+OptionPatterns[f]?(validQ[f]) only matches the opti when their values match patti, issuing a message otherwise.";
+optionChecks[_] = {};
+
+(*PackageExport["attachCheckMessages"]*)
+(*attachCheckMessage[f_] := If[MemberQ[Attributes@f, Protected]*)
+(*    (Unprotect[f];*)
+(*    f::invopt = "Unrecognized value for option `1`. `2` does not match `3`.";*)
+(*    attachCheckMessage[f] ^= True;*)
+(*    Protect[f];*)
+(*    True),*)
+(*    f::invopt = "Unrecognized value for option `1`. `2` does not match `3`.";*)
+(*    attachCheckMessage[f] ^= True*)
+(*  ];*)
+
+PackageExport["validQ"]
+validQ::usage = "The pattern OptionsPattern[]?(validQ[f]) will only match a rule whose lhs is a key in optionChecks[f] \
+when its rhs matches the associated pattern in optionChecks[f].";
+validQ[f_][opts___] := AllTrue[OptionChecks[f],
+  AllTrue[FilterRules[{opts}, #[[1]]],
+    optValueMatchesQ[f, #[[2]]]] &];
+
 PackageScope["applyIf"]
 SetAttributes[applyIf, HoldRest];
 applyIf::usage = "applyIf[cond, f, expr] returns f[expr] if cond evaluates to True, and expr otherwise.";
@@ -37,7 +67,7 @@ applyIf[cond_, func_, expr_] := If[TrueQ[cond], func@expr, expr];
 
 PackageScope["rangeOver"]
 rangeOver::usage = "rangeOver[expr] returns Range[Length[expr]]
-rangeOver[expr, i] returns Range[d_i], where d_i is the size of dimension i in expr.";
+rangeOver[expr, i] returns Range[di], where di is the size of dimension i in expr.";
 rangeOver[expr_] := Range[Length[expr]];
 rangeOver[expr_, dim_] := Range[Extract[Dimensions[expr], dim]];
 
@@ -51,8 +81,8 @@ aside[fs_List, expr_] := (Do[f[expr], {f, fs}]; expr);
 aside[fs_List][expr_] := (Do[f[expr], {f, fs}]; expr);
 
 PackageScope["unless"]
-unless::usage = "unless[expr, form_1, alt_1, form_2, alt_2, ...] evaluates expr, then compares it to each of the \
-form_i in turn, evaluating and returning the alt_i corresponding to the first match, or expr itself if no match is found.";
+unless::usage = "unless[expr, form1, alt1, form2, alt2, ...] evaluates expr, then compares it to each of the \
+formi in turn, evaluating and returning the alti corresponding to the first match, or expr itself if no match is found.";
 SetAttributes[unless, HoldRest];
 unless[value_, alts : PatternSequence[_, _] ..] := Switch[value, alts, _, value];
 SyntaxInformation[unless] = {"ArgumentsPattern" -> {_, _, __}};
@@ -75,20 +105,21 @@ firstReaped[tag_] := Function[{expr}, firstReaped[tag, expr], HoldFirst];
 (* Functions *)
 
 PackageScope["filterOpts"]
-filterOpts::usage = "filterOpts[{opt_1 -> v_1, opt_2 -> v_2, ...}, f] returns a sequence opt_i -> v_i where opt_i matches the left-hand side of a rule in Options[f].
-filterOpts[{opt_1 -> v_1, ...}, {f1, f2, ...}] returns the sequence opt_i -> v_i, where opt_i matches the lhs of a rule in any of Options[f1], Options[f2], ...
-filterOpts[opts, funcs, g] returns the sequence of opt_i -> v_i where opt_i matches some option of funcs, but does not match the lhs of any rule in Options[g]
-filterOpts[opts, funcs, {g1, g2, ...}] returns the same, where opt_i does not match the lhs of any rule in Options[g1], Options[g2], ...";
+filterOpts::usage = "
+filterOpts[{opt1 -> v1, opt2 -> v2, ...}, f] returns a sequence opti -> vi where opti matches the left-hand side of a rule in Options[f].
+filterOpts[{opt1 -> v1, ...}, {f1, f2, ...}] returns the sequence opti -> vi, where opti matches the lhs of a rule in any of Options[f1], Options[f2], ...
+filterOpts[opts, funcs, g] returns the sequence of opti -> vi where opti matches some option of funcs, but does not match the lhs of any rule in Options[g]
+filterOpts[opts, funcs, {g1, g2, ...}] returns the same, where opti does not match the lhs of any rule in Options[g1], Options[g2], ...";
 filterOpts[opts_?OptionQ, f_List] :=
-    Sequence @@ FilterRules[opts, Catenate[Options /@ f]];
+  Sequence @@ FilterRules[opts, Catenate[Options /@ f]];
 filterOpts[opts_?OptionQ, f_] := filterOpts[opts, {f}];
 filterOpts[opts_?OptionQ, f_List, except_List] :=
-    Sequence @@ Fold[FilterRules, opts,
-      {Catenate[Options /@ f], Except[Catenate[Options /@ except]]}];
+  Sequence @@ Fold[FilterRules, opts,
+    {Catenate[Options /@ f], Except[Catenate[Options /@ except]]}];
 filterOpts[opts_?OptionQ, f_, except_] :=
-    filterOpts[opts,
-      If[ListQ@f, f, {f}],
-      If[ListQ@except, except, {except}]];
+  filterOpts[opts,
+    If[ListQ@f, f, {f}],
+    If[ListQ@except, except, {except}]];
 
 PackageScope["validatedMethod"]
 validatedMethod::usage = "validatedMethod[given, {m1, m2, ...}, caller] returns given if it is one of {m1, m2, ...}. \
@@ -112,9 +143,9 @@ PackageScope["specificArguments"]
 specificArguments::usage = "specificArguments[f] returns all the non-pattern expressions e for which f[e] has been explicitly defined.
 specificArguments[f, True] also returns non-pattern expressions e1, e2, ... where f[e1|e2|...] has been explicitly defined.";
 specificArguments[f_, separateAlternatives_ : False] :=
-    If[separateAlternatives,
-      specificArguments[f] /. {Alternatives -> Sequence},
-      Cases[DownValues[f], HoldPattern[f[x_?(FreeQ[Pattern])]] :> x, {3}]];
+  If[separateAlternatives,
+    specificArguments[f] /. {Alternatives -> Sequence},
+    Cases[DownValues[f], HoldPattern[f[x_?(FreeQ[Pattern])]] :> x, {3}]];
 
 PackageScope["toAlternatives"]
 toAlternatives::usage = "toAlternatives[{p1, p2, ...}] returns p1 | p2 | ...";
@@ -134,68 +165,68 @@ rotateToFront[expr_, form_] := Catch@RotateLeft[expr,
   First@FirstPosition[expr, form, Message[rotateToFront::notfound, form, expr]; Throw[expr]] - 1];
 
 PackageScope["randomSubset"]
-randomSubset::usage = "randomSubset[{e_1, e_2, ...}] gives a pseudorandom subset of the e_i in pseudorandom order.
+randomSubset::usage = "randomSubset[{e1, e2, ...}] gives a pseudorandom subset of the ei in pseudorandom order.
 randomSubset[list, n] returns a list of n random subsets.
 randomSubset[list, {imin, imax}] returns a pseudorandom subset of list with length between imin and imax.
 randomSubset[list, {imin, imax}, n] returns n such random subsets.";
 randomSubset::smplen = "randomSubset cannot generate subsets of maximum length `1`, which is greater than the length of the sample set `2`.";
 randomSubset::invspec = "Invalid length specification `1` received at position 2 of randomSubset, where a pair of nondecreasing, nonnegative integers were expected.";
 randomSubset[s_List] :=
-    RandomSample[s, RandomVariate[BinomialDistribution[Length@s, 0.5]]];
+  RandomSample[s, RandomVariate[BinomialDistribution[Length@s, 0.5]]];
 randomSubset[s_List, n_Integer] := RandomSample[s, #] & /@ RandomVariate[BinomialDistribution[Length@s, 0.5], n];
 randomSubset[s_List, {imin_Integer, imax_Integer}] :=
-    RandomSample[s, RandomChoice[ Binomial[Length@s, Range[imin, imax]] -> Range[imin, imax]]] /;
-        And[ 0 <= imin <= imax || Message[randomSubset::invspec, {imin, imax}],
-          imax <= Length@s || Message[randomSubset::smplen, imax, s]];
+  RandomSample[s, RandomChoice[ Binomial[Length@s, Range[imin, imax]] -> Range[imin, imax]]] /;
+    And[ 0 <= imin <= imax || Message[randomSubset::invspec, {imin, imax}],
+      imax <= Length@s || Message[randomSubset::smplen, imax, s]];
 randomSubset[s_List, {imin_Integer, imax_Integer}, n_Integer] :=
-    RandomSample[s, #] & /@ RandomChoice[ Binomial[Length@s, Range[imin, imax]] -> Range[imin, imax], n] /;
-        And[ 0 <= imin <= imax || Message[randomSubset::invspec, {imin, imax}],
-          imax <= Length@s || Message[randomSubset::smplen, imax, s]];
+  RandomSample[s, #] & /@ RandomChoice[ Binomial[Length@s, Range[imin, imax]] -> Range[imin, imax], n] /;
+    And[ 0 <= imin <= imax || Message[randomSubset::invspec, {imin, imax}],
+      imax <= Length@s || Message[randomSubset::smplen, imax, s]];
 randomSubset[s : (i_Integer ;; j_Integer ;; k_Integer : 1)] :=
-    RandomSample[s, RandomVariate[BinomialDistribution[spanLength@s, 0.5]]];
+  RandomSample[s, RandomVariate[BinomialDistribution[spanLength@s, 0.5]]];
 randomSubset[s : (i_Integer ;; j_Integer ;; k_Integer : 1), n_Integer] :=
-    RandomSample[s, #] & /@ RandomVariate[BinomialDistribution[spanLength@s, 0.5], n];
+  RandomSample[s, #] & /@ RandomVariate[BinomialDistribution[spanLength@s, 0.5], n];
 randomSubset[ s : (i_Integer ;; j_Integer ;; k_Integer : 1), {imin_Integer, imax_Integer}] :=
-    RandomSample[s, RandomChoice[Binomial[spanLength@s, Range[imin, imax]] -> Range[imin, imax]]] /;
-        And[ 0 <= imin <= imax || Message[randomSubset::invspec, {imin, imax}],
-          imax <= spanLength@s || Message[randomSubset::smplen, imax, s]];
+  RandomSample[s, RandomChoice[Binomial[spanLength@s, Range[imin, imax]] -> Range[imin, imax]]] /;
+    And[ 0 <= imin <= imax || Message[randomSubset::invspec, {imin, imax}],
+      imax <= spanLength@s || Message[randomSubset::smplen, imax, s]];
 randomSubset[s : (i_Integer ;; j_Integer ;; k_Integer : 1), {imin_Integer, imax_Integer}, n_Integer] :=
-    RandomSample[s, #] & /@ RandomChoice[ Binomial[spanLength@s, Range[imin, imax]] -> Range[imin, imax], n] /;
-        And[ 0 <= imin <= imax || Message[randomSubset::invspec, {imin, imax}],
-          imax <= spanLength@s || Message[randomSubset::smplen, imax, s]];
+  RandomSample[s, #] & /@ RandomChoice[ Binomial[spanLength@s, Range[imin, imax]] -> Range[imin, imax], n] /;
+    And[ 0 <= imin <= imax || Message[randomSubset::invspec, {imin, imax}],
+      imax <= spanLength@s || Message[randomSubset::smplen, imax, s]];
 
 PackageScope["makeStateSummaryBoxes"]
 makeStateSummaryBoxes::usage = "makeStateSummaryBoxes[state] generates display boxes for the given DFA or NFA state.";
 makeStateSummaryBoxes[s : (head : DFAState | NFAState)[___], form_] :=
-    With[{color = Switch[head,
-      DFAState, If[InitialQ@s, RGBColor[
-        Rational[2, 3], 0.33333333333333337`, 0.33333333333333337`], RGBColor[
-        0.275184, 0.392896, 0.719488]],
-      NFAState,
-      If[InitialQ@s, RGBColor[0.1454912, 0.533312, 0.6958304],
-        RGBColor[0.9215, 0.5757, 0.07695]]]},
-      BoxForm`ArrangeSummaryBox[
-        None, s,
-        makeStateIcon[s],
-        makeStateUpperSummary[s],
-        makeStateTransitionSummary[s],
-        form, "Interpretable" -> True] /. {
-        RowBox[{TagBox["None", "SummaryHead"], "[", \[FormalA]_,
-          "]"}] -> \[FormalA]} /. {
-        TemplateBox[\[FormalA]_, "SummaryPanel"] ->
-            TemplateBox[\[FormalA],
-              "StateSummaryPanel",
-              DisplayFunction -> (FrameBox[#,
-                Alignment -> {Left, Center},
-                Appearance -> {"Default" -> None},
-                FrameMargins -> {{7.5, 5}, {2.5, 5}},
-                FrameStyle -> color,
-                RoundingRadius -> 3,
+  With[{color = Switch[head,
+    DFAState, If[InitialQ@s, RGBColor[
+      Rational[2, 3], 0.33333333333333337`, 0.33333333333333337`], RGBColor[
+      0.275184, 0.392896, 0.719488]],
+    NFAState,
+    If[InitialQ@s, RGBColor[0.1454912, 0.533312, 0.6958304],
+      RGBColor[0.9215, 0.5757, 0.07695]]]},
+    BoxForm`ArrangeSummaryBox[
+      None, s,
+      makeStateIcon[s],
+      makeStateUpperSummary[s],
+      makeStateTransitionSummary[s],
+      form, "Interpretable" -> True] /. {
+      RowBox[{TagBox["None", "SummaryHead"], "[", \[FormalA]_,
+        "]"}] -> \[FormalA]} /. {
+      TemplateBox[\[FormalA]_, "SummaryPanel"] ->
+        TemplateBox[\[FormalA],
+          "StateSummaryPanel",
+          DisplayFunction -> (FrameBox[#,
+            Alignment -> {Left, Center},
+            Appearance -> {"Default" -> None},
+            FrameMargins -> {{7.5, 5}, {2.5, 5}},
+            FrameStyle -> color,
+            RoundingRadius -> 3,
 
-                BaseStyle -> {Deployed -> False, Selectable -> False,
-                  Background -> GrayLevel[1, 0.8]},
-                DefaultBaseStyle -> {"Panel", Background -> None},
-                BaselinePosition -> Baseline] &)]}];
+            BaseStyle -> {Deployed -> False, Selectable -> False,
+              Background -> GrayLevel[1, 0.8]},
+            DefaultBaseStyle -> {"Panel", Background -> None},
+            BaselinePosition -> Baseline] &)]}];
 
 PackageScope["makeAutomatonSummaryBoxes"]
 makeAutomatonSummaryBoxes::usage = "makeAutomatonSummaryBoxes[A] generates display boxes for the given DFA or NFA.";
@@ -208,16 +239,16 @@ makeAutomatonSummaryBoxes[A : (head : NFA | DFA)[asc_],
     form, "Interpretable" -> Automatic];
 
 PackageScope["mergeTransitions"]
-mergeTransitions::usage = "mergeTransitions[{nfastate_1, nfastate_2, ...}] returns the association <|a_1 -> l_1 ... |>, where l_i = Union[nfastate_1[a_i], nfastate_2[a_i], ...].";
+mergeTransitions::usage = "mergeTransitions[{nfastate1, nfastate2, ...}] returns the association <|a1 -> l1 ... |>, where li = Union[nfastate1[ai], nfastate2[ai], ...].";
 mergeTransitions[states : {NFAState[_, _?AssociationQ, _] ...}] := Merge[states[[All, 2]], Apply[Union]];
 
 PackageScope["sowPredicate"]
 sowPredicate::usage = "sowPredicate[pred, tags] represents an operator that, when applied to x, yields pred[x], with the side effect Sow[x,tags] if pred[x] is True";
 sowPredicate[pred_ -> f_, tags_ : None] :=
-    With[{pval = pred[#]},
-      If[pval, Sow[f@#, tags]; True, False, pval]] &;
+  With[{pval = pred[#]},
+    If[pval, Sow[f@#, tags]; True, False, pval]] &;
 sowPredicate[pred_, tags_ : None] :=
-    With[{pval = pred[#]}, If[pval, Sow[#, tags]; True, False, pval]] &;
+  With[{pval = pred[#]}, If[pval, Sow[#, tags]; True, False, pval]] &;
 
 PackageScope["transitionLookup"]
 transitionLookup::usage = "transitionLookup[expr, {a1, a2, ...}] returns Transitions[expr, {a1, a2, ...}, Nothing] if\
@@ -232,11 +263,11 @@ updateState[state, f, spec] returns a copy of state whose ID and transitions are
 updateState[f] and updateState[f, spec] return operator forms of updateState that can be applied to states.";
 updateState[DFAState[id_, d_, rest___], namefn_] := DFAState[namefn[id], namefn /@ d, rest];
 updateState[s : DFAState[id_, d_, ___], namefn_, {init_, term_}] :=
-    DFAState[namefn[id], namefn /@ d, {autoAlt[init, InitialQ@s], autoAlt[term, TerminalQ@s]}];
+  DFAState[namefn[id], namefn /@ d, {autoAlt[init, InitialQ@s], autoAlt[term, TerminalQ@s]}];
 updateState[DFAState[id_, d_, ___], namefn_, rest_] := DFAState[namefn[id], namefn /@ d, rest];
 updateState[NFAState[id_, d_, rest___], namefn_] := NFAState[namefn[id], Map[namefn, d, {2}], rest];
 updateState[s : NFAState[id_, d_, ___], namefn_, {init_, term_}] :=
-    NFAState[namefn[id], Map[namefn, d, {2}], {autoAlt[init, InitialQ@s], autoAlt[term, TerminalQ@s]}];
+  NFAState[namefn[id], Map[namefn, d, {2}], {autoAlt[init, InitialQ@s], autoAlt[term, TerminalQ@s]}];
 updateState[s : NFAState[id_, d_, ___], namefn_, rest_] := NFAState[namefn[id], Map[namefn, d, {2}], rest];
 updateState[namefn_] := OperatorApplied[updateState][namefn];
 updateState[namefn_, rest_] := OperatorApplied[updateState, {3, 1, 2}][namefn, rest];
@@ -248,7 +279,7 @@ updateStateRule[f] and updateStateRule[f, spec] return an operator forms of upda
 updateStateRule[s : (DFAState | NFAState)[id_, ___], namefn_, rest___] := namefn[id] -> updateState[s, namefn, rest];
 updateStateRule[namefn : Except[_NFAState | _DFAState]] := OperatorApplied[updateStateRule][namefn];
 updateStateRule[namefn : Except[_NFAState | _DFAState], rest_] :=
-    OperatorApplied[updateStateRule, {3, 1, 2}][namefn, rest];
+  OperatorApplied[updateStateRule, {3, 1, 2}][namefn, rest];
 
 PackageScope["makeAlphabet"]
 makeAlphabet::usage = "makeAlphabet[n] returns an alphabet of length n, consisting of the first n letters in the \
@@ -267,26 +298,23 @@ PackageScope["makeStateIDs"]
 makeStateIDs::usage = "makeStateIDs[n] returns {1, 2, ..., n}
 makeStateIDs[n, f] returns {f[1], f[2], ..., f[n]}.
 makeStateIDs[{q1, q2, ...}, f] returns {f[q1], f[q2], ...}. If f is omitted, {q1, q2, ...} is returned unchanged.";
-makeStateIDs[n_, list_ : Automatic, f_ : Automatic] := Which[
-  f =!= Automatic, Array[f, n],
-  list =!= Automatic, Check[Take[list, n], makeStateIDs[n]],
-  True, Range[n]];
+makeStateIDs[k : (_Integer | _List), f_ : Automatic] := If[ListQ@k, Map, Array][autoAlt[f, Identity], k];
 
 (* ::Section:: *)
 (* Private functions *)
 
 spanLength[i_ ;; j_ ;; k_ : 1] := 1 + Floor[(j - i) / k];
 
-makeStateIcon[input: (NFAState | DFAState)[id_, ___]] := makeStateIcon[input] =
-    Deploy@Pane[Style[id, 12, ShowSyntaxStyles -> False],
-      Alignment -> {Center, Center},
-      ContentPadding -> False,
-      FrameMargins -> {{1, 1}, {0, 0}},
-      ImageSizeAction -> "ShrinkToFit",
-      ImageSize ->
-          Dynamic[{Automatic,
-            3.5` CurrentValue["FontCapHeight"] /
-                AbsoluteCurrentValue[Magnification]}]];
+makeStateIcon[input : (NFAState | DFAState)[id_, ___]] := makeStateIcon[input] =
+  Deploy@Pane[Style[id, 12, ShowSyntaxStyles -> False],
+    Alignment -> {Center, Center},
+    ContentPadding -> False,
+    FrameMargins -> {{1, 1}, {0, 0}},
+    ImageSizeAction -> "ShrinkToFit",
+    ImageSize ->
+      Dynamic[{Automatic,
+        3.5` CurrentValue["FontCapHeight"] /
+          AbsoluteCurrentValue[Magnification]}]];
 
 makeStateUpperSummary[state_] := {
   BoxForm`SummaryItem[{"Transitions: ", Length@Transitions@state}],
@@ -313,18 +341,18 @@ makeStateTransitionSummary[DFAState[_, d_, ___], displaymax_ : 5] := {
     Item["\[VerticalEllipsis]", Alignment -> Center], Nothing]};
 
 makeAutomatonUpperSummary[A_, displaymax_ : 3] :=
-    With[{alph = LanguageAlphabet[A]}, {
-      BoxForm`SummaryItem[{
-        "\[CapitalSigma]: ",
-        With[{es = If[MemberQ[alph, Epsilon], Epsilon, Nothing]},
-          Replace[If[es =!= Nothing, DeleteCases[alph, Epsilon], alph], {
-            {h : Repeated[_, {displaymax}], _, __, t_} :> {h, "\[Ellipsis]", t, es},
-            {x___} :> {x, es}
-          }]],
-        StringForm["  (``)", Length@alph]
-      }],
-      BoxForm`SummaryItem[{"States: ", StateCount[A]}]
-    }];
+  With[{alph = LanguageAlphabet[A]}, {
+    BoxForm`SummaryItem[{
+      "\[CapitalSigma]: ",
+      With[{es = If[MemberQ[alph, Epsilon], Epsilon, Nothing]},
+        Replace[If[es =!= Nothing, DeleteCases[alph, Epsilon], alph], {
+          {h : Repeated[_, {displaymax}], _, __, t_} :> {h, "\[Ellipsis]", t, es},
+          {x___} :> {x, es}
+        }]],
+      StringForm["  (``)", Length@alph]
+    }],
+    BoxForm`SummaryItem[{"States: ", StateCount[A]}]
+  }];
 
 makeAutomatonStateSummary[A_, displaymax_ : 3] := {
   Row[{

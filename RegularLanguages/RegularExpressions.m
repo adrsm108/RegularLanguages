@@ -13,7 +13,6 @@
 (* :Discussion: *)
 
 Package["RegularLanguages`"]
-PackageImport["Notation`"]
 
 (* ::Section:: *)
 (* Regex *)
@@ -39,7 +38,7 @@ CompoundREQ[expr, patt] returns True if expr is a compound regex and every chara
 CompoundREQ[_REConcat | _REUnion | _REClosure] = True;
 CompoundREQ[_] = False;
 CompoundREQ[r : (_REConcat | _REUnion | _REClosure), patt_] :=
-  AllTrue[LanguageAlphabet[r, "Standard"], MatchQ[patt]];
+  AllTrue[LanguageAlphabet[r, "IncludeEpsilon" -> False], MatchQ[patt]];
 
 PackageExport["REMatchQ"]
 REMatchQ::usage = "REMatchQ[expr, regex] returns True if expr is matched by regex.
@@ -49,7 +48,6 @@ REMatchQ[input_String, r_ /; CompoundREQ[r, _String]] := StringMatchQ[input, Reg
 REMatchQ[_, r_ /; CompoundREQ[r, _String]] = False;
 REMatchQ[input_, r_] := ToNFA[r][input];
 REMatchQ[r_][input_] := REMatchQ[input, r];
-(*Notation`InfixNotation[]*)
 
 PackageExport["RENormal"]
 RENormal::usage = "RENormal[regex] converts the regex into an expression with head RegularExpression recognizing strings from the same language.";
@@ -76,7 +74,7 @@ RELength[r_] := Module[{i = 0}, r /. reExcludingPatt[EmptyLanguage, Epsilon] :> 
 (* Union *)
 
 PackageExport["REUnion"]
-REUnion::usage = "REUnion[e_1, e_2, ...] represents a regex matching the union e_1 | e_2 | ... of the expressions e_i.";
+REUnion::usage = "REUnion[e1, e2, ...] represents a regex matching the union e1 | e2 | ... of the expressions ei.";
 Default[REUnion] = EmptyLanguage;
 REUnion[x_.] := x;
 SetAttributes[REUnion, Orderless];
@@ -87,13 +85,12 @@ REUnion[EmptyLanguage, a_] := a;
 REUnion[x_, REClosure[x_]] := REClosure[x];
 REUnion /: ToString[u_REUnion] :=
   "(" <> StringRiffle[ToString /@ (List @@ u), "|"] <> ")";
-Protect[REUnion];
 
 (* ::Subsection:: *)
 (* Concatenation *)
 
 PackageExport["REConcat"]
-REConcat::usage = "REUnion[e_1, e_2, ...] represents a regex matching the concatenation e_1 e_2 ... of the expressions e_i.";
+REConcat::usage = "REConcat[e1, e2, ...] represents a regex matching the concatenation e1 e2 ... of the expressions ei.";
 Default[REConcat] = Epsilon;
 REConcat[___, EmptyLanguage, ___] = EmptyLanguage;
 REConcat[x_] := x;
@@ -101,7 +98,6 @@ REConcat[] = EmptyLanguage;
 c : REConcat[___, Epsilon, ___] := DeleteCases[Unevaluated@c, Epsilon];
 SetAttributes[REConcat, {Flat, OneIdentity}];
 REConcat /: ToString[c_REConcat] := StringRiffle[ToString /@ (List @@ c), ""];
-Protect[REConcat];
 
 (* ::Subsection:: *)
 (* Closure *)
@@ -115,7 +111,6 @@ REClosure /: ToString[REClosure[c_REConcat]] := "(" <> ToString[c] <> ")*";
 REClosure /: ToString[c_REClosure] := ToString @@ c <> "*";
 REClosure[_, x__] /; Message[REClosure::argx, REClosure, Length[{x}] + 1] = Null;
 SyntaxInformation[REClosure] = {"ArgumentsPattern" -> {_}};
-Protect[REClosure];
 
 (* ::Section:: *)
 (* Transformation *)
@@ -127,7 +122,7 @@ RESymbolIndex /: MakeBoxes[RESymbolIndex[x_, i_], StandardForm] := ToBoxes[Subsc
 PackageExport["LinearizeRE"]
 LinearizeRE::usage = "LinearizeRE[regex] linearizes regex by indexing each character occurrence.
 LinearizeRE[regex, i] linearizes regex by indexing each character occurrence, starting at i.
-LinearizeRE[regex, i, True] returns a list {r', {a_1, a_2, ...}} where r' is the linearization of regex, and the a_i are the alphabet of r'";
+LinearizeRE[regex, i, True] returns a list {r', {a1, a2, ...}} where r' is the linearization of regex, and the ai are the alphabet of r'";
 LinearizeRE[r_, starti_Integer : 1, returnAlphabet_ : False] := Module[
   {i = starti},
   If[returnAlphabet,
@@ -208,7 +203,7 @@ RandomRE[n_Integer, alphin : (_List | _Integer), p : _?NumericQ : 0.5, OptionsPa
   ];
 
 PackageExport["ParseRE"]
-ParseRE::usage = "ParseRE[string] converts a regex in string form to an expression in terms of REUnion, REConcat, and REClosure. ";
+ParseRE::usage = "ParseRE[str] converts a regex in string form to an expression in terms of REUnion, REConcat, and REClosure. ";
 ParseRE::parsererr = "Something happened at input `1` in `2`";
 ParseRE::badexpect = "Was expecting `1`, but recieved `2`.";
 Options[ParseRE] = {"ParseTree" -> False};
@@ -294,6 +289,11 @@ fSet[HoldPattern[REClosure[x_]]] := Catenate[{fSet[x], Tuples[{dSet[x], pSet[x]}
 fSet[HoldPattern[REConcat[x_, y_]]] := Catenate[{fSet[x], fSet[y], Tuples[{dSet[x], pSet[y]}]}];
 fSet[_] = {};
 
+PackageScope["reExcludingPatt"]
+reExcludingPatt::usage = "reExcludingPatt[stuff...] is equivalent to Except[_REUnion | _REClosure | _REConcat | _Regex | REUnion | REClosure | REConcat | Regex | stuff...]";
+reExcludingPatt[stuff___] := Except@Alternatives[_REUnion, _REClosure, _REConcat, _Regex, REUnion, REClosure, REConcat, Regex, stuff];
+
+
 (* ::Section:: *)
 (* Private Functions *)
 
@@ -304,7 +304,7 @@ toRegexArray[A_?FAQ] := With[{
   states = States[A],
   inits = IDs[A, "Initial"],
   terms = IDs[A, "Terminal"],
-  alphidx = PositionIndex[LanguageAlphabet[A, "Standard"]][[All, 1]],
+  alphidx = PositionIndex[LanguageAlphabet[A, "IncludeEpsilon" -> False]][[All, 1]],
   swap = Function[Null, {#1, #2} = {#2, #1}, HoldAll]},
   With[{
     addnewinit = Length@inits != 1,
@@ -512,9 +512,6 @@ findPath[arr_SparseArray, s_, t_, subset_] := With[
       unless[Catch[dfs[s], "path", Flatten[#1] &],
         Null, {}]]]
 ];
-
-PackageScope["reExcludingPatt"]
-reExcludingPatt[stuff___] := Except[Alternatives[_REUnion, _REClosure, _REConcat, _Regex, REUnion, REClosure, REConcat, Regex, stuff]];
 
 $REFactorizationRules = Dispatch[{
   HoldPattern[u : REUnion[x_, REConcat[x_, r_]]] :>
