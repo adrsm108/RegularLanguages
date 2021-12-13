@@ -3,7 +3,23 @@
 Tools for specification, visualization, comparison, and manipulation of regular languages in Mathematica
 
 # Installation
-### TODO
+Evaluate in the *Mathematica* front end to download and install the paclet from this repository:
+```mathematica
+PacletInstall[
+  "RegularLanguages",
+  "Site" -> "http://raw.githubusercontent.com/adrsm108/RegularLanguages/main"
+]
+```
+
+Once installed, the paclet can be loaded with
+```mathematica
+<<RegularLanguages`
+```
+
+Information about package symbols can be inspected using
+```mathematica
+?RegularLanguages`*
+```
 
 # Usage
 ## DFAs
@@ -145,15 +161,17 @@ Out[32]= {{0, 1}, {0, 1}, {0, 1}, {1}, {1}, {1}, {}}
 
 ## Regular Expressions
 
-Regular expressions are represented by the operations `REUnion`, `REConcat`, and `REClosure`. A Regular expression may
-be created from a string using the function `ParseRE[str]`. The recognized operations are "|" for union, "*" for
-closure, and juxtaposition for concatenation.
+Regular expressions are represented symbolically by the operations [REUnion](#REUnion), [REConcat](#REConcat), and [REClosure](#REClosure).
+A Regular expression may be created from a string using the [ParseRE](#ParseRE) function. 
+The recognized operations are "|" for union, "*" for closure, and juxtaposition for concatenation.
 
 ```mathematica
 In[1] = ParseRE["(a|b*)de*"]
 
 Out[80] = REConcat[REUnion["a", REClosure["b"]], "d", REClosure["e"]]
 ```
+
+
 
 ## Visualization
 

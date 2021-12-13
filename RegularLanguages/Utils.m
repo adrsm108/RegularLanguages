@@ -233,7 +233,7 @@ makeAutomatonSummaryBoxes::usage = "makeAutomatonSummaryBoxes[A] generates displ
 makeAutomatonSummaryBoxes[A : (head : NFA | DFA)[asc_],
   form : (StandardForm | TraditionalForm)] :=
   BoxForm`ArrangeSummaryBox[
-    head, A, makeThumbnail[A],
+    head, A, Null (*makeThumbnail[A]*),
     makeAutomatonUpperSummary[A],
     makeAutomatonStateSummary[A],
     form, "Interpretable" -> Automatic];
