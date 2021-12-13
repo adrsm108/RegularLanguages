@@ -16,8 +16,10 @@ With[{names = Table[ToString[c] <> "*", {c, Contexts["RegularLanguages`*"]}],
     Remove @@ names;
   ]
 ];
-(*Get[FileNameJoin[{ParentDirectory@DirectoryName@$InputFileName, "Utils.m"}]];*)
 
 Get[FileNameJoin[{ParentDirectory@DirectoryName@$InputFileName, "Utils.m"}]];
+(*<<RegularLanguages.m*)
+(*RegularLanguages`UseNotation[True];*)
+Protect[Evaluate@Names["RegularLanguages`*"]];
 
 

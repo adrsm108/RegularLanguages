@@ -212,52 +212,61 @@ Recognized constructs are (from greatest to least precedence)
   - Postfix \"*\" is parsed as closure.
   - Juxtaposition is interpreted as concatenation.
   - Infix \"|\" is parsed as union.
-All other characters are interpreted as string literals of length 1.";
+All other characters are interpreted as string literals of length 1.
+
+Options:
+\"FullParseTree\" -> True | False
+  False: Result expression will use REUnion, REConcat, and REClosure as heads, which automatically reorder and simplify terms.
+  True: Result expression will use Inactive[REUnion], Inactive[REConcat], and Inactive[REClosure].
+    - The active form can be recovered by calling Activate on the returned expression.";
 ParseRE::parsererr = "Something happened at input `1` in `2`";
 ParseRE::badexpect = "Was expecting `1`, but recieved `2`.";
-Options[ParseRE] = {"ParseTree" -> False};
-ParseRE[string_String, OptionsPattern[]] := With[{
-  w = CreateDataStructure["Queue", Characters[string]]["Push", EndOfString],
-  expr = With[{o = applyIf[OptionValue["ParseTree"], Map@Inactive, <|"|" -> REUnion, "." -> REConcat, "*" -> REClosure|>]},
-    o[#1][##2] &],
-  binaryQ = MatchQ["|"],
-  postfixQ = MatchQ["*"],
-  varQ = (StringQ[#] && StringMatchQ[#, RegularExpression["[^*()|\\\\]"]]) &,
-  concatableQ = StringQ[#] && StringMatchQ[#, RegularExpression["[^*)|]"]] &,
-  prec = <|"|" -> 0, "." -> 1, "*" -> 2|>,
-  rprec = <|"|" -> 1, "." -> 2, "*" -> 2|>,
-  nprec = <|"|" -> 0, "." -> 1, "*" -> 1|>},
-  Module[{A, expectAfter, escape},
-    expectAfter[return_, c_] := With[{d = w["Pop"]},
-      If[MatchQ[d, c], return,
-        Throw[Failure["SyntaxError",
-          <|"MessageTemplate" -> "Expected `1` at position `2` but received `3`.",
-            "MessageParameters" -> {c, StringLength[string] - w["Length"], d}|>]]
-      ]];
-    escape[c_] := With[{d = w["Pop"]},
-      If[StringQ[d] &&
-        StringMatchQ[d, RegularExpression["[*()|\\\\]"]], d,
-        Throw[Failure["SyntaxError",
-          <|"MessageTemplate" -> "Unrecognized escape sequence `1``2` at position `3`.",
-            "MessageParameters" -> {c, d, StringLength[string] - w["Length"]}|>]]]];
+Options[ParseRE] = {"FullParseTree" -> False};
+OptionChecks[ParseRE] = {"FullParseTree" -> True | False};
+ParseRE[string_String, OptionsPattern[]?(validQ @ ParseRE)] :=
+  With[{
+    w = CreateDataStructure["Queue", Characters[string]]["Push", EndOfString],
+    expr = With[{o = applyIf[OptionValue["FullParseTree"],
+      Map@Inactive, <|"|" -> REUnion, "." -> REConcat, "*" -> REClosure|>]},
+      o[#1][##2] &],
+    binaryQ = MatchQ["|"],
+    postfixQ = MatchQ["*"],
+    varQ = (StringQ[#] && StringMatchQ[#, RegularExpression["[^*()|\\\\]"]]) &,
+    concatableQ = StringQ[#] && StringMatchQ[#, RegularExpression["[^*)|]"]] &,
+    prec = <|"|" -> 0, "." -> 1, "*" -> 2|>,
+    rprec = <|"|" -> 1, "." -> 2, "*" -> 2|>,
+    nprec = <|"|" -> 0, "." -> 1, "*" -> 1|>},
+    Module[{A, expectAfter, escape},
+      expectAfter[return_, c_] := With[{d = w["Pop"]},
+        If[MatchQ[d, c], return,
+          Throw[Failure["SyntaxError",
+            <|"MessageTemplate" -> "Expected `1` at position `2` but received `3`.",
+              "MessageParameters" -> {c, StringLength[string] - w["Length"], d}|>]]
+        ]];
+      escape[c_] := With[{d = w["Pop"]},
+        If[StringQ[d] &&
+          StringMatchQ[d, RegularExpression["[*()|\\\\]"]], d,
+          Throw[Failure["SyntaxError",
+            <|"MessageTemplate" -> "Unrecognized escape sequence `1``2` at position `3`.",
+              "MessageParameters" -> {c, d, StringLength[string] - w["Length"]}|>]]]];
 
-    A[p_] := Module[{
-      t = Switch[w["Peek"],
-        "(", expectAfter[w["Pop"]; A[0], ")"],
-        "\\", escape[w["Pop"]],
-        _?varQ, w["Pop"],
-        _, Epsilon],
-      nxt = w["Peek"], r = 2, s},
-      While[True,
-        t = Which[
-          binaryQ[nxt] && p <= prec[nxt] <= r, expr[s = w["Pop"], t, A[rprec[s]]],
-          postfixQ[nxt] && p <= prec[nxt] <= r, expr[s = w["Pop"], t],
-          concatableQ[nxt] && p <= prec["."] <= r,
-          expr[s = ".", t, A[rprec[s]]], True, Break[]];
-        {r, nxt} = {nprec[s], w["Peek"]}];
-      t];
-    (*Algorithm start*)
-    Catch@expectAfter[A[0], EndOfString]]];
+      A[p_] := Module[{
+        t = Switch[w["Peek"],
+          "(", expectAfter[w["Pop"]; A[0], ")"],
+          "\\", escape[w["Pop"]],
+          _?varQ, w["Pop"],
+          _, Epsilon],
+        nxt = w["Peek"], r = 2, s},
+        While[True,
+          t = Which[
+            binaryQ[nxt] && p <= prec[nxt] <= r, expr[s = w["Pop"], t, A[rprec[s]]],
+            postfixQ[nxt] && p <= prec[nxt] <= r, expr[s = w["Pop"], t],
+            concatableQ[nxt] && p <= prec["."] <= r,
+            expr[s = ".", t, A[rprec[s]]], True, Break[]];
+          {r, nxt} = {nprec[s], w["Peek"]}];
+        t];
+      (*Algorithm start*)
+      Catch@expectAfter[A[0], EndOfString]]];
 
 PackageExport["ToRE"]
 ToRE::usage = "ToRE[A] converts the automaton A to an equivalent regular expression.";

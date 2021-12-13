@@ -208,14 +208,24 @@ NthFromLastNFA[n_, a_, alph_] := NFA[
 ];
 
 PackageExport["ToNFA"]
-ToNFA::usage = "ToNFA[A] converts the automaton A into an NFA.
-ToNFA[regex] converts the regular expression regex into an NFA.";
-Options[ToNFA] = {Method -> Automatic};
-ToNFA[nfa_NFA, OptionsPattern[ToNFA]] := nfa;
-ToNFA[DFA[asc_?dfaAscQ], OptionsPattern[ToNFA]] := NFA[MapAt[NFAState, KeyDrop[asc, {"icon"}], {{"states", All}}]];
-ToNFA[g_?FAGraphQ, OptionsPattern[ToNFA]] := ToNFA[FAExpression@g];
-ToNFA[EmptyLanguage, OptionsPattern[ToNFA]] = NFA[{}, {1}, {}];
-ToNFA[Epsilon, OptionsPattern[ToNFA]] = NFA[{}, {1}, {1}];
+ToNFA::usage = "\
+ToNFA[A] converts the automaton A into an NFA.
+ToNFA[regex] converts the regular expression regex into an NFA.
+
+Options
+Method -> \"Glushkov\" | \"Thompson\"
+The algorithm to use when converting a regular expression to an NFA.
+  - \"Glushkov\": Glushkov construction
+    - Results in an Epsilon-free NFA with n + 1 states, where n is the number of symbols in the original regular expression.
+  - \"Thompson\": Thompson construction" ;
+OptionChecks[ToNFA] = { Method -> "Glushkov" | "Thompson" };
+Options[ToNFA] = {Method -> "Glushkov"};
+ToNFA[nfa_NFA, OptionsPattern[ToNFA]?(validQ@ToNFA)] := nfa;
+ToNFA[DFA[asc_?dfaAscQ], OptionsPattern[ToNFA]?(validQ@ToNFA)] :=
+  NFA[MapAt[NFAState, KeyDrop[asc, {"icon"}], {{"states", All}}]];
+ToNFA[g_?FAGraphQ, OptionsPattern[ToNFA]?(validQ@ToNFA)] := ToNFA[FAExpression@g];
+ToNFA[EmptyLanguage, OptionsPattern[ToNFA]?(validQ@ToNFA)] = NFA[{}, {1}, {}];
+ToNFA[Epsilon, OptionsPattern[ToNFA]?(validQ@ToNFA)] = NFA[{}, {1}, {1}];
 ToNFA[Regex[x_]] := NFA[
   "states" -> <|
     1 -> NFAState[1, <|x -> {2}|>, {True, False}],
@@ -224,10 +234,60 @@ ToNFA[Regex[x_]] := NFA[
   "terminal" -> {2},
   "alphabet" -> {x}
 ];
-ToNFA[r_?CompoundREQ, OptionsPattern[ToNFA]] :=
-  Switch[validatedMethod[OptionValue[Method], {"Glushkov", "Thompson", Automatic}, ToNFA],
-    "Glushkov" | Automatic, glushkovNFA[r],
-    "Thompson" , thompsonNFA[r]];
+ToNFA[r_?CompoundREQ, OptionsPattern[ToNFA]?(validQ @ ToNFA)] :=
+  Switch[OptionValue[Method],
+    "Glushkov", glushkovNFA[r],
+    "Thompson", thompsonNFA[r]];
+
+
+PackageExport["MinimizeNFA"]
+MinimizeNFA::usage = "\
+MinimizeNFA[nfa] attempts to find an equivalent NFA with fewer states than the original.
+If a NFA with fewer states is not found, the original is returned.
+
+Options:
+
+Method -> \"Exhaustive\" | \"SimulatedAnnealing\" | Automatic
+The method to use for minimization.
+  - \"Exhaustive\": Deterministic, exhaustive search.
+    - State count of a Returned NFA is guarenteed to be minimal
+    - The poor scaling of this algorithm renders it unsuitable for all but the simplest inputs.
+  - \"SimulatedAnnealing\": Probabilistic local search based on simulated annealing.
+    - Heuristic optimization suitable for small to medium NFAs.
+    - Non-deterministic. In general, obtaining the same result on different runs is not to be expected
+  - Automatic: Choose a suitable method automatically based on the number of prime grids identified.
+
+MaxIterations -> _Integer?Positive
+Maximum number of annealing steps to perform before returning when Method -> \"SimulatedAnnealing\".";
+Options[MinimizeNFA] = { Method -> Automatic, MaxIterations -> 250 };
+OptionChecks[MinimizeNFA] = { Method -> Automatic | "SimulatedAnnealing" | "Exhaustive", MaxIterations -> _Integer?Positive };
+MinimizeNFA[nfa_?NFAQ, OptionsPattern[MinimizeNFA]?(validQ @ MinimizeNFA)] :=
+  Module[{B, nfaB, ram, rows, isCover, states, idxs, initidx, termidxs, pGrids, tryMakeLegitNFA, res},
+    B = ToDFA[nfa, Method -> "Minimal", "StateNames" -> "Subset"];
+    nfaB = NFA[B];
+    ram = Table[Boole[IntersectingQ[p, q]],
+      {p, rows = DeleteCases[IDs[B], {}]},
+      {q, DeleteCases[
+        IDs[ToDFA[FAReversal@nfa, Method -> "Minimal",
+          "StateNames" -> "Subset"]], {}]}];
+    states = Values@KeyDrop[States@B, {{}}];
+    idxs = PositionIndex[rows ~ Append ~ {}][[All, 1]];
+    initidx = idxs[First@IDs[B, "Initial"]];
+    termidxs = Lookup[idxs, IDs[B, "Terminal"]];
+    pGrids = primeGrids[ram];
+    PrintTemporary[Length@pGrids, " prime grids computed."];
+
+    Switch[OptionValue[Method],
+      "Exhaustive", reduceGridsExhaustive,
+      "SimulatedAnnealing", reduceGridsSA,
+      Automatic,
+      With[ {nGrids = Length @ pGrids},
+        If[NSum[Binomial[nGrids, k],
+          {k, Ceiling[Log2[StateCount@B]],
+            Min[nGrids, StateCount[nfa] - 1, StateCount[B] - 1]}]
+          <= 256 , reduceGridsExhaustive, reduceGridsSA]]
+    ][nfa, B, nfaB, ram, rows, states, idxs, initidx, termidxs, pGrids, OptionValue[MaxIterations]]
+  ];
 
 (* ::Section:: *)
 (* Package Scope *)
@@ -305,54 +365,6 @@ primeGrids[ram_] := With[{primes = CreateDataStructure["LinkedList"],
     Normal@primes
   ]];
 
-PackageExport["MinimizeNFA"]
-MinimizeNFA::usage = "\
-MinimizeNFA[nfa] attempts to find an equivalent NFA with fewer states than the original.
-If a NFA with fewer states is not found, the original is returned.
-
-Options:
-
-Method -> \"Exhaustive\" | \"SimulatedAnnealing\" | Automatic
-The method to use for minimization.
-  - \"Exhaustive\": Deterministic, exhaustive search.
-    - State count of a Returned NFA is guarenteed to be minimal
-    - The poor scaling of this algorithm renders it unsuitable for all but the simplest inputs.
-  - \"SimulatedAnnealing\": Probabilistic local search based on simulated annealing.
-    - Heuristic optimization suitable for small to medium NFAs.
-    - Non-deterministic. In general, obtaining the same result on different runs is not to be expected
-  - Automatic: Choose a suitable method automatically based on the number of prime grids identified.
-
-MaxIterations -> _Integer?Positive
-Maximum number of annealing steps to perform before returning when Method -> \"SimulatedAnnealing\".";
-Options[MinimizeNFA] = { Method -> Automatic, MaxIterations -> 250 };
-OptionChecks[MinimizeNFA] = { Method -> Automatic | "SimulatedAnnealing" | "Exhaustive", MaxIterations -> _Integer?Positive };
-MinimizeNFA[nfa_?NFAQ, OptionsPattern[MinimizeNFA]?(validQ @ MinimizeNFA)] :=
-  Module[{B, nfaB, ram, rows, isCover, states, idxs, initidx, termidxs, pGrids, tryMakeLegitNFA, res},
-    B = ToDFA[nfa, Method -> "Minimal", "StateNames" -> "Subset"];
-    nfaB = NFA[B];
-    ram = Table[Boole[IntersectingQ[p, q]],
-      {p, rows = DeleteCases[IDs[B], {}]},
-      {q, DeleteCases[
-        IDs[ToDFA[FAReversal@nfa, Method -> "Minimal",
-          "StateNames" -> "Subset"]], {}]}];
-    states = Values@KeyDrop[States@B, {{}}];
-    idxs = PositionIndex[rows ~ Append ~ {}][[All, 1]];
-    initidx = idxs[First@IDs[B, "Initial"]];
-    termidxs = Lookup[idxs, IDs[B, "Terminal"]];
-    pGrids = primeGrids[ram];
-    PrintTemporary[Length@pGrids, " prime grids computed."];
-
-    Switch[OptionValue[Method],
-      "Exhaustive", reduceGridsExhaustive,
-      "SimulatedAnnealing", reduceGridsSA,
-      Automatic,
-      With[ {nGrids = Length @ pGrids},
-        If[NSum[Binomial[nGrids, k],
-          {k, Ceiling[Log2[StateCount@B]],
-            Min[nGrids, StateCount[nfa] - 1, StateCount[B] - 1]}]
-          <= 256 , reduceGridsExhaustive, reduceGridsSA]]
-    ][nfa, B, nfaB, ram, rows, states, idxs, initidx, termidxs, pGrids, OptionValue[MaxIterations]]
-  ];
 
 reduceGridsExhaustive[nfa_, B_, nfaB_, ram_, rows_, states_, idxs_, initidx_, termidxs_, grids_, iterations_] :=
   Module[{isCover, tryMakeLegitNFA, nCandidates, maxi,
