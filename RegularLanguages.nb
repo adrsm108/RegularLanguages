@@ -10,10 +10,10 @@
 NotebookFileLineBreakTest
 NotebookFileLineBreakTest
 NotebookDataPosition[       158,          7]
-NotebookDataLength[    132120,       2713]
-NotebookOptionsPosition[    122824,       2544]
-NotebookOutlinePosition[    127547,       2643]
-CellTagsIndexPosition[    127441,       2638]
+NotebookDataLength[    164454,       3433]
+NotebookOptionsPosition[    154469,       3252]
+NotebookOutlinePosition[    159192,       3351]
+CellTagsIndexPosition[    159086,       3346]
 WindowFrame->Normal*)
 
 (* Beginning of Notebook Content *)
@@ -33,7 +33,8 @@ Cell[BoxData[{
  CellChangeTimes->{{3.847828997223902*^9, 3.8478290174648447`*^9}, {
   3.8478295790219345`*^9, 3.8478295858069105`*^9}, {3.847830767823578*^9, 
   3.8478307696736507`*^9}},
- CellLabel->"In[20]:=",ExpressionUUID->"f3cc5d9e-1a12-45f9-9c65-ef2b7f7fe525"],
+ CellLabel->
+  "In[115]:=",ExpressionUUID->"f3cc5d9e-1a12-45f9-9c65-ef2b7f7fe525"],
 
 Cell[BoxData[
  RowBox[{
@@ -50,7 +51,8 @@ Cell[BoxData[
  InitializationCell->True,
  CellChangeTimes->{{3.8483506238533487`*^9, 3.8483506291739607`*^9}, {
   3.8483506771255646`*^9, 3.8483507199077563`*^9}},
- CellLabel->"In[3]:=",ExpressionUUID->"36b48813-da7f-4bf8-b360-230a46163bce"],
+ CellLabel->
+  "In[117]:=",ExpressionUUID->"36b48813-da7f-4bf8-b360-230a46163bce"],
 
 Cell[BoxData[{
  RowBox[{
@@ -452,26 +454,51 @@ Cell[BoxData[{
       RowBox[{"UseNotation", "[", "True", "]"}]}], "]"}]}], ";"}], 
   "\[IndentingNewLine]"}], "\[IndentingNewLine]", 
  RowBox[{
+  RowBox[{
+   RowBox[{
+    RowBox[{"pacletRuleToString", "[", 
+     RowBox[{"x_", "->", "val_"}], "]"}], ":=", 
+    RowBox[{
+     RowBox[{"ToString", "[", "x", "]"}], "->", "val"}]}], ";"}], 
+  "\[IndentingNewLine]"}], "\[IndentingNewLine]", 
+ RowBox[{
   RowBox[{"preparePaclet", "[", "]"}], ":=", 
   RowBox[{"(", "\[IndentingNewLine]", 
    RowBox[{
-    RowBox[{"Needs", "[", "\"\<PacletTools`\>\"", "]"}], ";", 
-    "\[IndentingNewLine]", 
-    RowBox[{"SetDirectory", "[", 
-     RowBox[{"NotebookDirectory", "[", "]"}], "]"}], ";", 
-    "\[IndentingNewLine]", 
     RowBox[{"CopyFile", "[", 
-     RowBox[{"\"\<README.md\>\"", ",", "\"\<tmp/lastREADME.md\>\""}], "]"}], 
-    ";", "\[IndentingNewLine]", 
-    RowBox[{"createREADME", "[", "\"\<README.md\>\"", "]"}], ";", 
-    "\[IndentingNewLine]", 
-    RowBox[{"PacletBuild", "[", "\[IndentingNewLine]", 
      RowBox[{
      "\"\<C:\\\\Files\\\\Adam\\\\Documents\\\\Code\\\\Wolfram\\\\\
-RegularLanguages\>\"", ",", "\[IndentingNewLine]", 
+RegularLanguages\\\\README.md\>\"", ",", "\[IndentingNewLine]", 
       "\"\<C:\\\\Files\\\\Adam\\\\Documents\\\\Code\\\\Wolfram\\\\\
-RegularLanguages\\\\dist\>\""}], "]"}]}], "\[IndentingNewLine]", 
-   ")"}]}]}], "Input",
+RegularLanguages\\\\tmp\\\\lastREADME.md\>\"", ",", 
+      RowBox[{"OverwriteTarget", "\[Rule]", "True"}]}], "]"}], ";", 
+    "\[IndentingNewLine]", 
+    RowBox[{
+    "createREADME", "[", 
+     "\"\<C:\\\\Files\\\\Adam\\\\Documents\\\\Code\\\\Wolfram\\\\\
+RegularLanguages\\\\README.md\>\"", "]"}], ";", "\[IndentingNewLine]", 
+    RowBox[{"CreatePacletArchive", "[", "\[IndentingNewLine]", 
+     RowBox[{
+     "\"\<C:\\\\Files\\\\Adam\\\\Documents\\\\Code\\\\Wolfram\\\\\
+RegularLanguages\\\\RegularLanguages\>\"", ",", "\[IndentingNewLine]", 
+      "\"\<C:\\\\Files\\\\Adam\\\\Documents\\\\Code\\\\Wolfram\\\\\
+RegularLanguages\\\\Paclets\>\""}], "]"}], ";", "\[IndentingNewLine]", 
+    RowBox[{"Export", "[", 
+     RowBox[{
+     "\"\<C:\\\\Files\\\\Adam\\\\Documents\\\\Code\\\\Wolfram\\\\\
+RegularLanguages\\\\PacletSite.mz\>\"", ",", "\[IndentingNewLine]", 
+      RowBox[{"{", 
+       RowBox[{"PacletSite", "[", "\[IndentingNewLine]", 
+        RowBox[{"pacletRuleToString", "/@", 
+         RowBox[{
+         "Import", "[", "\"\<RegularLanguages/PacletInfo.m\>\"", "]"}]}], 
+        "]"}], "}"}], ",", "\[IndentingNewLine]", 
+      RowBox[{"{", 
+       RowBox[{"\"\<ZIP\>\"", ",", 
+        RowBox[{"{", 
+         RowBox[{"{", 
+          RowBox[{"\"\<PacletSite.m\>\"", ",", "\"\<Package\>\""}], "}"}], 
+         "}"}]}], "}"}]}], "]"}]}], "\[IndentingNewLine]", ")"}]}]}], "Input",
  InitializationCell->True,
  CellChangeTimes->{{3.84793328859017*^9, 3.8479333238952885`*^9}, 
    3.8479333601790915`*^9, {3.8479334040884256`*^9, 3.8479334153218083`*^9}, {
@@ -620,14 +647,695 @@ RegularLanguages\\\\dist\>\""}], "]"}]}], "\[IndentingNewLine]",
    3.8483532089536104`*^9}, {3.848367271386554*^9, 3.84836727465804*^9}, {
    3.8483678451799784`*^9, 3.8483680041430173`*^9}, {3.848368102955414*^9, 
    3.8483681855252275`*^9}, {3.8483682196317267`*^9, 3.848368302672468*^9}, {
-   3.848368375330162*^9, 
-   3.8483683807834234`*^9}},ExpressionUUID->"dc44e351-fd7d-4e51-af3a-\
-b7a838d197cd"],
+   3.848368375330162*^9, 3.8483683995812063`*^9}, {3.848368433631472*^9, 
+   3.8483684354896865`*^9}, {3.848368471651596*^9, 3.8483684747370663`*^9}, {
+   3.8483694143452463`*^9, 3.848369435123066*^9}, {3.8483694746812196`*^9, 
+   3.8483694984366426`*^9}, {3.848369893550559*^9, 3.8483698947804947`*^9}, {
+   3.8483700543634143`*^9, 3.84837005929386*^9}, {3.848370127752105*^9, 
+   3.8483702066967487`*^9}},
+ CellLabel->
+  "In[157]:=",ExpressionUUID->"dc44e351-fd7d-4e51-af3a-b7a838d197cd"],
+
+Cell[BoxData["prep"], "Input",
+ CellChangeTimes->{{3.848370120675317*^9, 
+  3.848370121964856*^9}},ExpressionUUID->"7b5f92c5-3dca-43dd-9938-\
+224137143219"],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{"Options", "[", "Export", "]"}]], "Input",
+ CellChangeTimes->{
+  3.8483700563114424`*^9, {3.8483700884963903`*^9, 3.8483700911490283`*^9}},
+ CellLabel->
+  "In[142]:=",ExpressionUUID->"b08f9958-007e-4a2e-bd4f-81a6121da4b3"],
+
+Cell[BoxData[
+ RowBox[{"{", "}"}]], "Output",
+ CellChangeTimes->{3.8483700914028063`*^9},
+ CellLabel->
+  "Out[142]=",ExpressionUUID->"18a45357-95ed-469f-aad8-5416b63762ac"]
+}, Open  ]],
+
+Cell[CellGroupData[{
 
 Cell[BoxData[
  RowBox[{"preparePaclet", "[", "]"}]], "Input",
  CellChangeTimes->{{3.8483683069863195`*^9, 3.8483683100070367`*^9}},
- CellLabel->"In[39]:=",ExpressionUUID->"6bcca223-114a-43bf-9b55-d48e99a8f592"],
+ CellLabel->
+  "In[171]:=",ExpressionUUID->"6bcca223-114a-43bf-9b55-d48e99a8f592"],
+
+Cell[BoxData["\<\"C:\\\\Files\\\\Adam\\\\Documents\\\\Code\\\\Wolfram\\\\\
+RegularLanguages\\\\PacletSite.mz\"\>"], "Output",
+ CellChangeTimes->{{3.848368389082119*^9, 3.848368404303455*^9}, 
+   3.848368443538896*^9, 3.84836848103074*^9, 3.848368728093977*^9, 
+   3.8483687856504917`*^9, 3.848368930742591*^9, 3.848370231324912*^9},
+ CellLabel->
+  "Out[171]=",ExpressionUUID->"84be2e99-af6b-46e5-9942-c7278ca54595"]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{"?", "PacletBuild"}]], "Input",
+ CellChangeTimes->{{3.848368408336401*^9, 3.848368411463602*^9}},
+ CellLabel->"In[68]:=",ExpressionUUID->"d4dc848b-11ca-42b2-a40e-6c5be8bc5b2c"],
+
+Cell[BoxData[
+ InterpretationBox[
+  StyleBox[
+   FrameBox[
+    DynamicModuleBox[{System`InformationDump`open$$ = True, 
+     System`InformationDump`mouseOver$$ = False}, 
+     PaneSelectorBox[{True->
+      TagBox[GridBox[{
+         {
+          ItemBox[
+           PaneBox[
+            StyleBox["\<\" Symbol\"\>", "InformationTitleText",
+             StripOnInput->False,
+             BaseStyle -> None],
+            FrameMargins->{{4, 0}, {-1, 1}}],
+           BaseStyle->"InformationTitleBackground",
+           StripOnInput->False], 
+          ItemBox["\<\"\"\>",
+           BaseStyle->"InformationTitleBackground",
+           StripOnInput->False]},
+         {
+          ItemBox[
+           PaneBox[
+            StyleBox["\<\"PacletTools`PacletBuild\"\>", "InformationUsageText",
+             StripOnInput->False,
+             LineSpacing->{1.5, 1.5, 3.}],
+            FrameMargins->{{10, 10}, {8, 10}}],
+           BaseStyle->"InformationUsageSubtitleBackground",
+           StripOnInput->False], 
+          ItemBox["\<\"\"\>",
+           BaseStyle->"InformationUsageSubtitleBackground",
+           StripOnInput->False]},
+         {
+          PaneBox[
+           TagBox[GridBox[{
+              {
+               StyleBox[
+                TagBox[
+                 TooltipBox[
+                  StyleBox["\<\" Definitions\"\>", "InformationRowLabel",
+                   StripOnInput->False],
+                  "\"Definitions\"",
+                  TooltipStyle->"TextStyling"],
+                 Annotation[#, "Definitions", "Tooltip"]& ], "DialogStyle",
+                StripOnInput->False]},
+              {
+               TemplateBox[{"\"\[ThinSpace]\"", 
+                 GridBox[{{
+                    RowBox[{
+                    RowBox[{"PacletBuild", "[", 
+                    
+                    RowBox[{
+                    "PacletTools`PacletBuild`Private`pacletRoot0_", "?", 
+                    "StringQ"}], "]"}], ":=", 
+                    RowBox[{"PacletTools`Utils`Try", "[", 
+                    RowBox[{"Module", "[", 
+                    RowBox[{
+                    RowBox[{"{", 
+                    
+                    RowBox[{"PacletTools`PacletBuild`Private`pacletRoot", ",",
+                     "PacletTools`PacletBuild`Private`pacletObj", ",", 
+                    "PacletTools`PacletBuild`Private`infoFile", ",", 
+                    "PacletTools`PacletBuild`Private`buildRoot", ",", 
+                    "PacletTools`PacletBuild`Private`buildPacletRoot", ",", 
+                    "PacletTools`PacletBuild`Private`extensionFiles", ",", 
+                    
+                    RowBox[{"PacletTools`PacletBuild`Private`manifestFiles", 
+                    "=", 
+                    RowBox[{"{", "}"}]}]}], "}"}], ",", 
+                    RowBox[{
+                    RowBox[{"PacletTools`PacletBuild`Private`pacletRoot", "=", 
+                    RowBox[{"Confirm", "[", 
+                    
+                    RowBox[{"ExpandFileName", "[", 
+                    "PacletTools`PacletBuild`Private`pacletRoot0", "]"}], 
+                    "]"}]}], ";", 
+                    RowBox[{"PacletTools`PacletBuild`Private`pacletObj", "=", 
+                    RowBox[{"Confirm", "[", 
+                    
+                    RowBox[{"PacletTools`Private`pacletInfoObject", "[", 
+                    "PacletTools`PacletBuild`Private`pacletRoot", "]"}], 
+                    "]"}]}], ";", 
+                    RowBox[{"PacletTools`PacletBuild`Private`infoFile", "=", 
+                    
+                    RowBox[{"PacletTools`Private`pacletInfoFile", "[", 
+                    "PacletTools`PacletBuild`Private`pacletRoot", "]"}]}], 
+                    ";", 
+                    RowBox[{"Assert", "[", 
+                    RowBox[{
+                    
+                    RowBox[{"StringQ", "[", 
+                    "PacletTools`PacletBuild`Private`infoFile", "]"}], ",", 
+                    RowBox[{"{", 
+                    RowBox[{"30", ",", "\"PacletTools`PacletBuild`\""}], 
+                    "}"}]}], "]"}], ";", 
+                    RowBox[{"Assert", "[", 
+                    RowBox[{
+                    RowBox[{"StringQ", "[", 
+                    RowBox[{"PacletTools`PacletBuild`Private`pacletObj", "[", 
+                    "\"Name\"", "]"}], "]"}], ",", 
+                    RowBox[{"{", 
+                    RowBox[{"33", ",", "\"PacletTools`PacletBuild`\""}], 
+                    "}"}]}], "]"}], ";", 
+                    RowBox[{"PacletTools`PacletBuild`Private`buildRoot", "=", 
+                    RowBox[{"FileNameJoin", "[", 
+                    RowBox[{"{", 
+                    
+                    RowBox[{"PacletTools`PacletBuild`Private`pacletRoot", ",",
+                     "\"build\""}], "}"}], "]"}]}], ";", 
+                    
+                    RowBox[{"PacletTools`PacletBuild`Private`buildPacletRoot",
+                     "=", 
+                    RowBox[{"FileNameJoin", "[", 
+                    RowBox[{"{", 
+                    
+                    RowBox[{"PacletTools`PacletBuild`Private`pacletRoot", ",",
+                     "\"build\"", ",", 
+                    
+                    RowBox[{"PacletTools`PacletBuild`Private`pacletObj", "[", 
+                    "\"Name\"", "]"}]}], "}"}], "]"}]}], ";", 
+                    RowBox[{"If", "[", 
+                    RowBox[{
+                    
+                    RowBox[{"DirectoryQ", "[", 
+                    "PacletTools`PacletBuild`Private`buildRoot", "]"}], ",", 
+                    RowBox[{"DeleteDirectory", "[", 
+                    RowBox[{"PacletTools`PacletBuild`Private`buildRoot", ",", 
+                    RowBox[{"DeleteContents", "\[Rule]", "True"}]}], "]"}]}], 
+                    "]"}], ";", 
+                    RowBox[{"Confirm", "[", 
+                    
+                    RowBox[{"CreateDirectory", "[", 
+                    "PacletTools`PacletBuild`Private`buildRoot", "]"}], "]"}],
+                     ";", 
+                    RowBox[{"Confirm", "[", 
+                    
+                    RowBox[{"CreateDirectory", "[", 
+                    "PacletTools`PacletBuild`Private`buildPacletRoot", "]"}], 
+                    "]"}], ";", 
+                    RowBox[{"If", "[", 
+                    RowBox[{
+                    RowBox[{"FailureQ", "[", 
+                    RowBox[{"CopyFile", "[", 
+                    RowBox[{"PacletTools`PacletBuild`Private`infoFile", ",", 
+                    RowBox[{"FileNameJoin", "[", 
+                    RowBox[{"{", 
+                    
+                    RowBox[{"PacletTools`PacletBuild`Private`buildPacletRoot",
+                     ",", 
+                    RowBox[{"\"PacletInfo.\"", "<>", 
+                    
+                    RowBox[{"FileExtension", "[", 
+                    "PacletTools`PacletBuild`Private`infoFile", "]"}]}]}], 
+                    "}"}], "]"}]}], "]"}], "]"}], ",", 
+                    RowBox[{
+                    RowBox[{"Message", "[", 
+                    RowBox[{
+                    StyleBox[
+                    RowBox[{"PacletToolsGeneral", "::", "error"}], 
+                    "MessageName"], ",", 
+                    "\"Failure copying PacletInfo file to build \
+directory.\""}], "]"}], ";", 
+                    RowBox[{"Return", "[", "$Failed", "]"}], ";"}]}], "]"}], 
+                    ";", 
+                    
+                    RowBox[{"PacletTools`PacletBuild`Private`extensionFiles", 
+                    "=", 
+                    RowBox[{"Confirm", "[", 
+                    RowBox[{"PacletExtensionFiles", "[", 
+                    RowBox[{
+                    
+                    RowBox[{"File", "[", 
+                    "PacletTools`PacletBuild`Private`pacletRoot", "]"}], ",", 
+                    RowBox[{"\"Relative\"", "\[Rule]", "True"}]}], "]"}], 
+                    "]"}]}], ";", 
+                    RowBox[{"Assert", "[", 
+                    RowBox[{
+                    RowBox[{"MatchQ", "[", 
+                    
+                    RowBox[{"PacletTools`PacletBuild`Private`extensionFiles", 
+                    ",", 
+                    RowBox[{"Association", "[", 
+                    RowBox[{
+                    RowBox[{"(", 
+                    RowBox[{
+                    RowBox[{"{", 
+                    RowBox[{
+                    RowBox[{"_", "?", "StringQ"}], ",", "___"}], "}"}], 
+                    "\[Rule]", 
+                    RowBox[{"{", 
+                    RowBox[{"___", "?", "StringQ"}], "}"}]}], ")"}], "..."}], 
+                    "]"}]}], "]"}], ",", 
+                    RowBox[{"{", 
+                    RowBox[{"89", ",", "\"PacletTools`PacletBuild`\""}], 
+                    "}"}]}], "]"}], ";", 
+                    RowBox[{"Scan", "[", 
+                    RowBox[{
+                    RowBox[{"Replace", "[", 
+                    RowBox[{
+                    RowBox[{"(", 
+                    RowBox[{
+                    RowBox[{"PacletTools`PacletBuild`Private`extension", ":", 
+                    RowBox[{"{", 
+                    RowBox[{
+                    RowBox[{"_", "?", "StringQ"}], ",", "___"}], "}"}]}], 
+                    "\[Rule]", "PacletTools`PacletBuild`Private`files_"}], 
+                    ")"}], "\[RuleDelayed]", 
+                    RowBox[{"(", 
+                    RowBox[{
+                    RowBox[{"Confirm", "[", 
+                    RowBox[{"PacletTools`PacletBuild`Private`handleExt", "[", 
+                    
+                    RowBox[{"PacletTools`PacletBuild`Private`pacletRoot", ",",
+                     "PacletTools`PacletBuild`Private`buildPacletRoot", ",", 
+                    "PacletTools`PacletBuild`Private`extension", ",", 
+                    "PacletTools`PacletBuild`Private`files"}], "]"}], "]"}], 
+                    ";"}], ")"}]}], "]"}], ",", 
+                    
+                    RowBox[{"Normal", "[", 
+                    "PacletTools`PacletBuild`Private`extensionFiles", "]"}]}],
+                     "]"}], ";", 
+                    
+                    RowBox[{"PacletTools`PacletBuild`Private`manifestFiles", 
+                    "=", 
+                    RowBox[{
+                    RowBox[{"(", 
+                    RowBox[{
+                    RowBox[{"Replace", "[", 
+                    RowBox[{"#1", ",", 
+                    RowBox[{"{", 
+                    RowBox[{
+                    RowBox[{
+                    RowBox[{
+                    
+                    RowBox[{"PacletTools`PacletBuild`Private`path_", "?", 
+                    "StringQ"}], "|", 
+                    RowBox[{"File", "[", 
+                    
+                    RowBox[{"PacletTools`PacletBuild`Private`path_", "?", 
+                    "StringQ"}], "]"}]}], "\[RuleDelayed]", 
+                    RowBox[{"File", "[", 
+                    RowBox[{"ExpandFileName", "[", 
+                    RowBox[{"FileNameJoin", "[", 
+                    RowBox[{"{", 
+                    
+                    RowBox[{"PacletTools`PacletBuild`Private`buildPacletRoot",
+                     ",", "PacletTools`PacletBuild`Private`path"}], "}"}], 
+                    "]"}], "]"}], "]"}]}], ",", 
+                    
+                    RowBox[{"PacletTools`PacletBuild`Private`expr_", 
+                    "\[RuleDelayed]", 
+                    
+                    RowBox[{"Throw", "[", 
+                    "\"Illegal manifest file: \
+StandardForm[PacletTools`PacletBuild`Private`expr]\"", "]"}]}]}], "}"}]}], 
+                    "]"}], "&"}], ")"}], "/@", 
+                    RowBox[{"Join", "@@", 
+                    
+                    RowBox[{"Values", "[", 
+                    "PacletTools`PacletBuild`Private`extensionFiles", 
+                    "]"}]}]}]}], ";", 
+                    RowBox[{"Module", "[", 
+                    RowBox[{
+                    RowBox[{"{", 
+                    
+                    RowBox[{"PacletTools`PacletBuild`Private`manifest", ",", 
+                    "PacletTools`PacletBuild`Private`manifestString", ",", 
+                    "PacletTools`PacletBuild`Private`destDir", ",", 
+                    "PacletTools`PacletBuild`Private`archive"}], "}"}], ",", 
+                    RowBox[{
+                    RowBox[{"PacletTools`PacletBuild`Private`manifest", "=", 
+                    RowBox[{"Association", "[", 
+                    
+                    RowBox[{"\"Files\"", "\[Rule]", 
+                    "PacletTools`PacletBuild`Private`manifestFiles"}], 
+                    "]"}]}], ";", 
+                    
+                    RowBox[{"PacletTools`PacletBuild`Private`manifestString", 
+                    "=", 
+                    RowBox[{"ToString", "[", 
+                    
+                    RowBox[{"InputForm", "[", 
+                    "PacletTools`PacletBuild`Private`manifest", "]"}], 
+                    "]"}]}], ";", 
+                    RowBox[{"Confirm", "[", 
+                    RowBox[{"Export", "[", 
+                    RowBox[{
+                    RowBox[{"FileNameJoin", "[", 
+                    RowBox[{"{", 
+                    
+                    RowBox[{"PacletTools`PacletBuild`Private`buildPacletRoot",
+                     ",", "\"PacletManifest.wl\""}], "}"}], "]"}], ",", 
+                    "PacletTools`PacletBuild`Private`manifestString", ",", 
+                    "\"String\""}], "]"}], "]"}], ";", 
+                    RowBox[{"PacletTools`PacletBuild`Private`destDir", "=", 
+                    RowBox[{"If", "[", 
+                    RowBox[{
+                    RowBox[{
+                    RowBox[{"Length", "[", 
+                    
+                    RowBox[{"DownValues", "[", 
+                    "PacletManager`Packer`Private`getFullPath", "]"}], "]"}], 
+                    ">", "0"}], ",", 
+                    
+                    RowBox[{"PacletManager`Packer`Private`getFullPath", "[", 
+                    "PacletTools`PacletBuild`Private`buildRoot", "]"}], ",", 
+                    
+                    RowBox[{"ExpandFileName", "[", 
+                    "PacletTools`PacletBuild`Private`buildRoot", "]"}]}], 
+                    "]"}]}], ";", 
+                    RowBox[{"PacletTools`PacletBuild`Private`archive", "=", 
+                    RowBox[{"CreatePacletArchive", "[", 
+                    
+                    RowBox[{"PacletTools`PacletBuild`Private`buildPacletRoot",
+                     ",", "PacletTools`PacletBuild`Private`destDir"}], 
+                    "]"}]}], ";", 
+                    RowBox[{"Association", "[", 
+                    RowBox[{
+                    
+                    RowBox[{"\"Manifest\"", "\[Rule]", 
+                    "PacletTools`PacletBuild`Private`manifest"}], ",", 
+                    
+                    RowBox[{"\"Archive\"", "\[Rule]", 
+                    "PacletTools`PacletBuild`Private`archive"}]}], "]"}]}]}], 
+                    "]"}]}]}], "]"}], "]"}]}]}, {" "}}, 
+                  GridBoxAlignment -> {"Columns" -> {{Left}}}, 
+                  DefaultBaseStyle -> "Column", 
+                  GridBoxItemSize -> {
+                   "Columns" -> {{Automatic}}, "Rows" -> {{Automatic}}}]},
+                "RowDefault"]}
+             },
+             DefaultBaseStyle->"Column",
+             GridBoxAlignment->{"Columns" -> {{Left}}},
+             
+             GridBoxItemSize->{
+              "Columns" -> {{Automatic}}, "Rows" -> {{Automatic}}}],
+            "Column"],
+           FrameMargins->{{6, 0}, {3, 6}}], "\<\"\"\>"},
+         {
+          PaneBox[GridBox[{
+             {
+              DynamicModuleBox[{System`InformationDump`open$$ = {
+               False, False, False, False, False, False}}, 
+               StyleBox[GridBox[{
+                  {
+                   TagBox[
+                    TooltipBox[
+                    StyleBox["\<\" Full Name\"\>", "InformationRowLabel",
+                    StripOnInput->False],
+                    "\"FullName\"",
+                    TooltipStyle->"TextStyling"],
+                    
+                    Annotation[#, "FullName", 
+                    "Tooltip"]& ], "\<\"PacletTools`PacletBuild\"\>"}
+                 },
+                 AutoDelete->False,
+                 GridBoxAlignment->{"Columns" -> {Right, Left}},
+                 GridBoxDividers->None,
+                 GridBoxItemSize->{"Columns" -> {Automatic, Automatic}},
+                 GridBoxSpacings->{"Columns" -> {
+                    Offset[0.27999999999999997`], {
+                    Offset[0.5599999999999999]}, 
+                    Offset[0.27999999999999997`]}, "Rows" -> {
+                    Offset[0.2], {
+                    Offset[0.8]}, 
+                    Offset[0.2]}}], "DialogStyle",
+                StripOnInput->False],
+               DynamicModuleValues:>{}]}
+            },
+            DefaultBaseStyle->"Column",
+            GridBoxAlignment->{"Columns" -> {{Left}}},
+            GridBoxDividers->{"Columns" -> {{False}}, "Rows" -> {{False}}},
+            
+            GridBoxItemSize->{
+             "Columns" -> {{Automatic}}, "Rows" -> {{Automatic}}},
+            GridBoxSpacings->{"Columns" -> {
+                Offset[0.27999999999999997`], {
+                 Offset[0.5599999999999999]}, 
+                Offset[0.27999999999999997`]}, "Rows" -> {
+                Offset[0.2], {
+                 Offset[3.6]}, 
+                Offset[0.2]}}],
+           FrameMargins->{{6, 6}, {6, 3}}], ""},
+         {
+          ItemBox[
+           TagBox[
+            ButtonBox[
+             PaneSelectorBox[{False->
+              
+              DynamicBox[FEPrivate`FrontEndResource[
+               "FEBitmaps", "UpPointerOpener"],
+               ImageSizeCache->{10., {3., 7.}}], True->
+              
+              DynamicBox[FEPrivate`FrontEndResource[
+               "FEBitmaps", "UpPointerOpenerHot"],
+               ImageSizeCache->{10., {3., 7.}}]}, Dynamic[
+              System`InformationDump`mouseOver$$]],
+             Alignment->Left,
+             Appearance->{"Default" -> None},
+             
+             ButtonFunction:>FEPrivate`Set[
+              System`InformationDump`open$$, False],
+             Evaluator->Automatic,
+             FrameMargins->{{9, 0}, {0, 0}},
+             ImageMargins->0,
+             ImageSize->Full,
+             Method->"Preemptive"],
+            
+            EventHandlerTag[{
+             "MouseEntered" :> 
+              FEPrivate`Set[System`InformationDump`mouseOver$$, True], 
+              "MouseExited" :> 
+              FEPrivate`Set[System`InformationDump`mouseOver$$, False], 
+              Method -> "Preemptive", PassEventsDown -> Automatic, 
+              PassEventsUp -> True}]],
+           BaseStyle->"InformationTitleBackground",
+           StripOnInput->False], "\[SpanFromLeft]"}
+        },
+        AutoDelete->False,
+        FrameStyle->Directive[
+          GrayLevel[0.8], 
+          Thickness[Tiny]],
+        GridBoxAlignment->{"Columns" -> {Left, Right}, "Rows" -> {{Center}}},
+        GridBoxDividers->{
+         "Columns" -> {{None}}, "Rows" -> {False, {True}, False}},
+        GridBoxItemSize->{
+         "Columns" -> {{Automatic}}, "Rows" -> {{Automatic}}}],
+       "Grid"], False->
+      TagBox[GridBox[{
+         {
+          ItemBox[
+           PaneBox[
+            StyleBox["\<\" Symbol\"\>", "InformationTitleText",
+             StripOnInput->False],
+            FrameMargins->{{4, 0}, {-1, 1}}],
+           BaseStyle->"InformationTitleBackground",
+           StripOnInput->False], 
+          ItemBox["\<\"\"\>",
+           BaseStyle->"InformationTitleBackground",
+           StripOnInput->False]},
+         {
+          ItemBox[
+           PaneBox[
+            StyleBox["\<\"PacletTools`PacletBuild\"\>", "InformationUsageText",
+             StripOnInput->False,
+             LineSpacing->{1.5, 1.5, 3.}],
+            FrameMargins->{{10, 10}, {8, 10}}],
+           BaseStyle->"InformationUsageSubtitleBackground",
+           StripOnInput->False], 
+          ItemBox["\<\"\"\>",
+           BaseStyle->"InformationUsageSubtitleBackground",
+           StripOnInput->False]},
+         {
+          ItemBox[
+           TagBox[
+            ButtonBox[
+             PaneSelectorBox[{False->
+              
+              DynamicBox[FEPrivate`FrontEndResource[
+               "FEBitmaps", "DownPointerOpener"]], True->
+              
+              DynamicBox[FEPrivate`FrontEndResource[
+               "FEBitmaps", "DownPointerOpenerHot"]]}, Dynamic[
+              System`InformationDump`mouseOver$$]],
+             Alignment->Left,
+             Appearance->{"Default" -> None},
+             
+             ButtonFunction:>FEPrivate`Set[
+              System`InformationDump`open$$, True],
+             Evaluator->Automatic,
+             FrameMargins->{{9, 0}, {0, 0}},
+             ImageMargins->0,
+             ImageSize->Full,
+             Method->"Preemptive"],
+            
+            EventHandlerTag[{
+             "MouseEntered" :> 
+              FEPrivate`Set[System`InformationDump`mouseOver$$, True], 
+              "MouseExited" :> 
+              FEPrivate`Set[System`InformationDump`mouseOver$$, False], 
+              Method -> "Preemptive", PassEventsDown -> Automatic, 
+              PassEventsUp -> True}]],
+           BaseStyle->"InformationTitleBackground",
+           StripOnInput->False], "\[SpanFromLeft]"}
+        },
+        AutoDelete->False,
+        FrameStyle->Directive[
+          GrayLevel[0.8], 
+          Thickness[Tiny]],
+        GridBoxAlignment->{"Columns" -> {Left, Right}, "Rows" -> {{Center}}},
+        GridBoxDividers->{
+         "Columns" -> {{None}}, "Rows" -> {False, {True}, False}},
+        GridBoxItemSize->{
+         "Columns" -> {{Automatic}}, "Rows" -> {{Automatic}}}],
+       "Grid"]}, Dynamic[System`InformationDump`open$$],
+      BaselinePosition->Baseline,
+      FrameMargins->0,
+      ImageSize->Automatic],
+     DynamicModuleValues:>{}],
+    BaseStyle->"InformationGridFrame",
+    StripOnInput->False], "InformationGridPlain",
+   StripOnInput->False],
+  InformationData[
+   Association[
+   "ObjectType" -> "Symbol", "Usage" -> "PacletTools`PacletBuild", 
+    "Documentation" -> None, "OwnValues" -> None, "UpValues" -> None, 
+    "DownValues" -> 
+    Information`InformationValueForm[
+     DownValues, PacletTools`PacletBuild, {PacletTools`PacletBuild[
+         PatternTest[
+          Pattern[PacletTools`PacletBuild`Private`pacletRoot0, 
+           Blank[]], StringQ]] :> PacletTools`Utils`Try[
+         Module[{
+          PacletTools`PacletBuild`Private`pacletRoot, 
+           PacletTools`PacletBuild`Private`pacletObj, 
+           PacletTools`PacletBuild`Private`infoFile, 
+           PacletTools`PacletBuild`Private`buildRoot, 
+           PacletTools`PacletBuild`Private`buildPacletRoot, 
+           PacletTools`PacletBuild`Private`extensionFiles, 
+           PacletTools`PacletBuild`Private`manifestFiles = {}}, 
+          PacletTools`PacletBuild`Private`pacletRoot = Confirm[
+             ExpandFileName[PacletTools`PacletBuild`Private`pacletRoot0]]; 
+          PacletTools`PacletBuild`Private`pacletObj = Confirm[
+             PacletTools`Private`pacletInfoObject[
+             PacletTools`PacletBuild`Private`pacletRoot]]; 
+          PacletTools`PacletBuild`Private`infoFile = 
+           PacletTools`Private`pacletInfoFile[
+            PacletTools`PacletBuild`Private`pacletRoot]; Assert[
+            StringQ[PacletTools`PacletBuild`Private`infoFile], {
+            30, "PacletTools`PacletBuild`"}]; Assert[
+            StringQ[
+             PacletTools`PacletBuild`Private`pacletObj["Name"]], {
+            33, "PacletTools`PacletBuild`"}]; 
+          PacletTools`PacletBuild`Private`buildRoot = 
+           FileNameJoin[{
+             PacletTools`PacletBuild`Private`pacletRoot, "build"}]; 
+          PacletTools`PacletBuild`Private`buildPacletRoot = 
+           FileNameJoin[{PacletTools`PacletBuild`Private`pacletRoot, "build", 
+              PacletTools`PacletBuild`Private`pacletObj["Name"]}]; If[
+            DirectoryQ[PacletTools`PacletBuild`Private`buildRoot], 
+            DeleteDirectory[
+            PacletTools`PacletBuild`Private`buildRoot, DeleteContents -> 
+             True]]; Confirm[
+            CreateDirectory[PacletTools`PacletBuild`Private`buildRoot]]; 
+          Confirm[
+            CreateDirectory[PacletTools`PacletBuild`Private`buildPacletRoot]]; 
+          If[
+            FailureQ[
+             CopyFile[PacletTools`PacletBuild`Private`infoFile, 
+              FileNameJoin[{PacletTools`PacletBuild`Private`buildPacletRoot, 
+                StringJoin["PacletInfo.", 
+                 FileExtension[PacletTools`PacletBuild`Private`infoFile]]}]]],
+             Message[
+              MessageName[PacletTools`PacletToolsGeneral, "error"], 
+              "Failure copying PacletInfo file to build directory."]; 
+            Return[$Failed]; Null]; 
+          PacletTools`PacletBuild`Private`extensionFiles = Confirm[
+             PacletTools`PacletExtensionFiles[
+              File[PacletTools`PacletBuild`Private`pacletRoot], "Relative" -> 
+              True]]; Assert[
+            MatchQ[PacletTools`PacletBuild`Private`extensionFiles, 
+             Association[
+              RepeatedNull[{
+                 PatternTest[
+                  Blank[], StringQ], 
+                 BlankNullSequence[]} -> {
+                 PatternTest[
+                  BlankNullSequence[], StringQ]}]]], {
+            89, "PacletTools`PacletBuild`"}]; Scan[
+            Replace[(Pattern[PacletTools`PacletBuild`Private`extension, {
+                 PatternTest[
+                  Blank[], StringQ], 
+                 BlankNullSequence[]}] -> 
+              Pattern[PacletTools`PacletBuild`Private`files, 
+                Blank[]]) :> (Confirm[
+                PacletTools`PacletBuild`Private`handleExt[
+                PacletTools`PacletBuild`Private`pacletRoot, 
+                 PacletTools`PacletBuild`Private`buildPacletRoot, 
+                 PacletTools`PacletBuild`Private`extension, 
+                 PacletTools`PacletBuild`Private`files]]; Null)], 
+            Normal[PacletTools`PacletBuild`Private`extensionFiles]]; 
+          PacletTools`PacletBuild`Private`manifestFiles = 
+           Map[Replace[#, {Alternatives[
+                 PatternTest[
+                  Pattern[PacletTools`PacletBuild`Private`path, 
+                   Blank[]], StringQ], 
+                 File[
+                  PatternTest[
+                   Pattern[PacletTools`PacletBuild`Private`path, 
+                    Blank[]], StringQ]]] :> File[
+                 ExpandFileName[
+                  
+                  FileNameJoin[{
+                   PacletTools`PacletBuild`Private`buildPacletRoot, 
+                    PacletTools`PacletBuild`Private`path}]]], 
+               Pattern[PacletTools`PacletBuild`Private`expr, 
+                 Blank[]] :> Throw[
+                 StringForm[
+                 "Illegal manifest file: ``", 
+                  PacletTools`PacletBuild`Private`expr]]}]& , 
+             Apply[Join, 
+              Values[PacletTools`PacletBuild`Private`extensionFiles]]]; 
+          Module[{PacletTools`PacletBuild`Private`manifest, 
+             PacletTools`PacletBuild`Private`manifestString, 
+             PacletTools`PacletBuild`Private`destDir, 
+             PacletTools`PacletBuild`Private`archive}, 
+            PacletTools`PacletBuild`Private`manifest = 
+             Association[
+              "Files" -> PacletTools`PacletBuild`Private`manifestFiles]; 
+            PacletTools`PacletBuild`Private`manifestString = ToString[
+               InputForm[PacletTools`PacletBuild`Private`manifest]]; Confirm[
+              Export[
+               
+               FileNameJoin[{
+                PacletTools`PacletBuild`Private`buildPacletRoot, 
+                 "PacletManifest.wl"}], 
+               PacletTools`PacletBuild`Private`manifestString, "String"]]; 
+            PacletTools`PacletBuild`Private`destDir = If[Length[
+                 DownValues[PacletManager`Packer`Private`getFullPath]] > 0, 
+               PacletManager`Packer`Private`getFullPath[
+               PacletTools`PacletBuild`Private`buildRoot], 
+               ExpandFileName[PacletTools`PacletBuild`Private`buildRoot]]; 
+            PacletTools`PacletBuild`Private`archive = 
+             CreatePacletArchive[
+              PacletTools`PacletBuild`Private`buildPacletRoot, 
+               PacletTools`PacletBuild`Private`destDir]; 
+            Association[
+             "Manifest" -> PacletTools`PacletBuild`Private`manifest, 
+              "Archive" -> PacletTools`PacletBuild`Private`archive]]]]}], 
+    "SubValues" -> None, "DefaultValues" -> None, "NValues" -> None, 
+    "FormatValues" -> None, "Options" -> None, "Attributes" -> {}, "FullName" -> 
+    "PacletTools`PacletBuild"], False]]], "Output",
+ CellChangeTimes->{3.848368411886325*^9},
+ CellLabel->"Out[68]=",ExpressionUUID->"438d7bad-0f40-4390-93e4-48abfb5c4eef"]
+}, Open  ]],
 
 Cell[BoxData[
  RowBox[{"Needs", "[", "\"\<PacletTools`\>\"", "]"}]], "Input",
@@ -2631,89 +3339,101 @@ ExpressionUUID->"dcb9e4dd-4d97-4409-9593-85502bb0a1c8"
 (*CellTagsOutline
 CellTagsIndex->{
  "Info-60c22439-4868-4da3-99be-c45d10fe58cb"->{
-  Cell[106769, 2145, 13269, 317, 82, "Print",ExpressionUUID->"aa636c06-7dcd-4e35-8805-1f2f9845d750",
+  Cell[138414, 2853, 13269, 317, 82, "Print",ExpressionUUID->"aa636c06-7dcd-4e35-8805-1f2f9845d750",
    CellTags->"Info-60c22439-4868-4da3-99be-c45d10fe58cb"]}
  }
 *)
 (*CellTagsIndex
 CellTagsIndex->{
- {"Info-60c22439-4868-4da3-99be-c45d10fe58cb", 127257, 2632}
+ {"Info-60c22439-4868-4da3-99be-c45d10fe58cb", 158902, 3340}
  }
 *)
 (*NotebookFileOutline
 Notebook[{
 Cell[558, 20, 208, 3, 28, "Input",ExpressionUUID->"04ca7c67-29a0-41e3-8422-5c8c906c906c"],
-Cell[769, 25, 468, 10, 64, "Input",ExpressionUUID->"f3cc5d9e-1a12-45f9-9c65-ef2b7f7fe525",
+Cell[769, 25, 472, 11, 64, "Input",ExpressionUUID->"f3cc5d9e-1a12-45f9-9c65-ef2b7f7fe525",
  InitializationCell->True],
-Cell[1240, 37, 646, 15, 64, "Input",ExpressionUUID->"36b48813-da7f-4bf8-b360-230a46163bce",
+Cell[1244, 38, 651, 16, 64, "Input",ExpressionUUID->"36b48813-da7f-4bf8-b360-230a46163bce",
  InitializationCell->True],
-Cell[1889, 54, 29191, 570, 2044, "Input",ExpressionUUID->"dc44e351-fd7d-4e51-af3a-b7a838d197cd",
+Cell[1898, 56, 30659, 600, 2139, "Input",ExpressionUUID->"dc44e351-fd7d-4e51-af3a-b7a838d197cd",
  InitializationCell->True],
-Cell[31083, 626, 210, 3, 28, "Input",ExpressionUUID->"6bcca223-114a-43bf-9b55-d48e99a8f592"],
-Cell[31296, 631, 156, 2, 28, "Input",ExpressionUUID->"28de4b38-ad9e-4803-9b46-d5901defdcb0"],
+Cell[32560, 658, 156, 3, 28, "Input",ExpressionUUID->"7b5f92c5-3dca-43dd-9938-224137143219"],
 Cell[CellGroupData[{
-Cell[31477, 637, 199, 4, 28, "Input",ExpressionUUID->"87b6c691-c715-48c5-b595-d5aec69566a3"],
-Cell[31679, 643, 40613, 884, 271, "Output",ExpressionUUID->"3cb02c80-01da-4317-a8ab-032e6f559fe2"]
+Cell[32741, 665, 245, 5, 28, "Input",ExpressionUUID->"b08f9958-007e-4a2e-bd4f-81a6121da4b3"],
+Cell[32989, 672, 172, 4, 32, "Output",ExpressionUUID->"18a45357-95ed-469f-aad8-5416b63762ac"]
 }, Open  ]],
 Cell[CellGroupData[{
-Cell[72329, 1532, 224, 3, 28, "Input",ExpressionUUID->"7bc8835a-a776-4a71-9bd5-1564823b184b"],
-Cell[72556, 1537, 618, 15, 33, "Output",ExpressionUUID->"8abd8881-9e16-4afc-b0d8-27596cdd3549"]
+Cell[33198, 681, 214, 4, 28, "Input",ExpressionUUID->"6bcca223-114a-43bf-9b55-d48e99a8f592"],
+Cell[33415, 687, 415, 6, 32, "Output",ExpressionUUID->"84be2e99-af6b-46e5-9942-c7278ca54595"]
 }, Open  ]],
 Cell[CellGroupData[{
-Cell[73211, 1557, 460, 6, 28, "Input",ExpressionUUID->"7e1c5bda-875a-4b8d-88cf-13a3e7604075"],
-Cell[73674, 1565, 2087, 29, 32, "Output",ExpressionUUID->"b4030a11-3308-4d5f-a7c7-7e3a48b16eeb"]
+Cell[33867, 698, 199, 3, 28, "Input",ExpressionUUID->"d4dc848b-11ca-42b2-a40e-6c5be8bc5b2c"],
+Cell[34069, 703, 28857, 633, 819, "Output",ExpressionUUID->"438d7bad-0f40-4390-93e4-48abfb5c4eef"]
 }, Open  ]],
-Cell[75776, 1597, 168, 3, 28, "Input",ExpressionUUID->"3d81b4f6-5f8c-479f-a745-40212ac00f2e"],
-Cell[75947, 1602, 156, 3, 28, "Input",ExpressionUUID->"04d9c998-f414-45a5-bbdf-597df405bbec"],
+Cell[62941, 1339, 156, 2, 28, "Input",ExpressionUUID->"28de4b38-ad9e-4803-9b46-d5901defdcb0"],
 Cell[CellGroupData[{
-Cell[76128, 1609, 345, 8, 28, "Input",ExpressionUUID->"f6ac89d6-e144-415d-88c5-f9ef45360c5f"],
-Cell[76476, 1619, 21280, 285, 3667, "Output",ExpressionUUID->"652efa3e-573b-42e7-a4dd-f4c4fe38e4c5"]
-}, Open  ]],
-Cell[CellGroupData[{
-Cell[97793, 1909, 178, 4, 28, "Input",ExpressionUUID->"5a80d71c-a006-4018-a82e-cdbb86df07e2"],
-Cell[97974, 1915, 485, 11, 28, "Message",ExpressionUUID->"717e97be-44c5-45c7-9add-6005ac181fec"],
-Cell[98462, 1928, 532, 11, 28, "Message",ExpressionUUID->"141186b0-b6cd-40bd-89ec-6bfa58ad5ff3"],
-Cell[98997, 1941, 304, 6, 32, "Output",ExpressionUUID->"3599ad76-d5d9-4386-999a-3cded5903579"]
+Cell[63122, 1345, 199, 4, 28, "Input",ExpressionUUID->"87b6c691-c715-48c5-b595-d5aec69566a3"],
+Cell[63324, 1351, 40613, 884, 271, "Output",ExpressionUUID->"3cb02c80-01da-4317-a8ab-032e6f559fe2"]
 }, Open  ]],
 Cell[CellGroupData[{
-Cell[99338, 1952, 232, 4, 28, "Input",ExpressionUUID->"7f8cf284-6179-4d01-9bd2-27bb0edfe4a8"],
-Cell[99573, 1958, 422, 10, 28, "Message",ExpressionUUID->"ead5a0a4-2a94-449e-9c37-06b3a2187049"],
-Cell[99998, 1970, 422, 10, 28, "Message",ExpressionUUID->"8753c627-0bb6-4758-adda-ae4993bc34c1"],
-Cell[100423, 1982, 376, 9, 28, "Message",ExpressionUUID->"16e9cae2-7671-4ede-95dd-2e969c12c95e"],
-Cell[100802, 1993, 454, 10, 28, "Message",ExpressionUUID->"4391b51b-c541-464c-9528-0203f277f605"],
-Cell[101259, 2005, 270, 5, 32, "Output",ExpressionUUID->"799edcd0-888e-403c-b408-67ad48d09608"]
+Cell[103974, 2240, 224, 3, 28, "Input",ExpressionUUID->"7bc8835a-a776-4a71-9bd5-1564823b184b"],
+Cell[104201, 2245, 618, 15, 33, "Output",ExpressionUUID->"8abd8881-9e16-4afc-b0d8-27596cdd3549"]
 }, Open  ]],
 Cell[CellGroupData[{
-Cell[101566, 2015, 162, 2, 28, "Input",ExpressionUUID->"1905ef2a-848a-4225-ac0e-5b07a0b4678c"],
-Cell[101731, 2019, 311, 6, 32, "Output",ExpressionUUID->"4bfcbf23-a7d6-453d-8808-e61b00cb9aa7"]
+Cell[104856, 2265, 460, 6, 28, "Input",ExpressionUUID->"7e1c5bda-875a-4b8d-88cf-13a3e7604075"],
+Cell[105319, 2273, 2087, 29, 32, "Output",ExpressionUUID->"b4030a11-3308-4d5f-a7c7-7e3a48b16eeb"]
+}, Open  ]],
+Cell[107421, 2305, 168, 3, 28, "Input",ExpressionUUID->"3d81b4f6-5f8c-479f-a745-40212ac00f2e"],
+Cell[107592, 2310, 156, 3, 28, "Input",ExpressionUUID->"04d9c998-f414-45a5-bbdf-597df405bbec"],
+Cell[CellGroupData[{
+Cell[107773, 2317, 345, 8, 28, "Input",ExpressionUUID->"f6ac89d6-e144-415d-88c5-f9ef45360c5f"],
+Cell[108121, 2327, 21280, 285, 3667, "Output",ExpressionUUID->"652efa3e-573b-42e7-a4dd-f4c4fe38e4c5"]
 }, Open  ]],
 Cell[CellGroupData[{
-Cell[102079, 2030, 210, 3, 28, "Input",ExpressionUUID->"cfe9dcd2-6e59-420b-8fb6-2f1cd1dbf079"],
-Cell[102292, 2035, 4474, 108, 95, "Output",ExpressionUUID->"d9e777c3-a553-4dfc-8ab8-cb868513b7d0"],
-Cell[106769, 2145, 13269, 317, 82, "Print",ExpressionUUID->"aa636c06-7dcd-4e35-8805-1f2f9845d750",
+Cell[129438, 2617, 178, 4, 28, "Input",ExpressionUUID->"5a80d71c-a006-4018-a82e-cdbb86df07e2"],
+Cell[129619, 2623, 485, 11, 28, "Message",ExpressionUUID->"717e97be-44c5-45c7-9add-6005ac181fec"],
+Cell[130107, 2636, 532, 11, 28, "Message",ExpressionUUID->"141186b0-b6cd-40bd-89ec-6bfa58ad5ff3"],
+Cell[130642, 2649, 304, 6, 32, "Output",ExpressionUUID->"3599ad76-d5d9-4386-999a-3cded5903579"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[130983, 2660, 232, 4, 28, "Input",ExpressionUUID->"7f8cf284-6179-4d01-9bd2-27bb0edfe4a8"],
+Cell[131218, 2666, 422, 10, 28, "Message",ExpressionUUID->"ead5a0a4-2a94-449e-9c37-06b3a2187049"],
+Cell[131643, 2678, 422, 10, 28, "Message",ExpressionUUID->"8753c627-0bb6-4758-adda-ae4993bc34c1"],
+Cell[132068, 2690, 376, 9, 28, "Message",ExpressionUUID->"16e9cae2-7671-4ede-95dd-2e969c12c95e"],
+Cell[132447, 2701, 454, 10, 28, "Message",ExpressionUUID->"4391b51b-c541-464c-9528-0203f277f605"],
+Cell[132904, 2713, 270, 5, 32, "Output",ExpressionUUID->"799edcd0-888e-403c-b408-67ad48d09608"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[133211, 2723, 162, 2, 28, "Input",ExpressionUUID->"1905ef2a-848a-4225-ac0e-5b07a0b4678c"],
+Cell[133376, 2727, 311, 6, 32, "Output",ExpressionUUID->"4bfcbf23-a7d6-453d-8808-e61b00cb9aa7"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[133724, 2738, 210, 3, 28, "Input",ExpressionUUID->"cfe9dcd2-6e59-420b-8fb6-2f1cd1dbf079"],
+Cell[133937, 2743, 4474, 108, 95, "Output",ExpressionUUID->"d9e777c3-a553-4dfc-8ab8-cb868513b7d0"],
+Cell[138414, 2853, 13269, 317, 82, "Print",ExpressionUUID->"aa636c06-7dcd-4e35-8805-1f2f9845d750",
  CellTags->"Info-60c22439-4868-4da3-99be-c45d10fe58cb"]
 }, Open  ]],
 Cell[CellGroupData[{
-Cell[120075, 2467, 219, 3, 28, "Input",ExpressionUUID->"3e542ee1-0d09-4e79-a67b-cb401fead22e"],
-Cell[120297, 2472, 193, 3, 32, "Output",ExpressionUUID->"5b99b829-be17-44c0-8306-00c01e5760d8"]
+Cell[151720, 3175, 219, 3, 28, "Input",ExpressionUUID->"3e542ee1-0d09-4e79-a67b-cb401fead22e"],
+Cell[151942, 3180, 193, 3, 32, "Output",ExpressionUUID->"5b99b829-be17-44c0-8306-00c01e5760d8"]
 }, Open  ]],
-Cell[120505, 2478, 218, 3, 28, "Input",ExpressionUUID->"fb95f50b-ec54-48e4-830e-9f37daeace01"],
+Cell[152150, 3186, 218, 3, 28, "Input",ExpressionUUID->"fb95f50b-ec54-48e4-830e-9f37daeace01"],
 Cell[CellGroupData[{
-Cell[120748, 2485, 203, 2, 28, "Input",ExpressionUUID->"c26a54a4-7d12-44cf-8daf-a2e0763298bd"],
-Cell[120954, 2489, 160, 2, 32, "Output",ExpressionUUID->"029c123b-b909-46c8-be26-24106ac771a1"]
-}, Open  ]],
-Cell[CellGroupData[{
-Cell[121151, 2496, 188, 2, 28, "Input",ExpressionUUID->"497517ea-dfcd-4b63-9977-cf0c73b6c20c"],
-Cell[121342, 2500, 237, 6, 32, "Output",ExpressionUUID->"261a0927-191f-4c51-894e-8df1b6d4bd4d"]
+Cell[152393, 3193, 203, 2, 28, "Input",ExpressionUUID->"c26a54a4-7d12-44cf-8daf-a2e0763298bd"],
+Cell[152599, 3197, 160, 2, 32, "Output",ExpressionUUID->"029c123b-b909-46c8-be26-24106ac771a1"]
 }, Open  ]],
 Cell[CellGroupData[{
-Cell[121616, 2511, 204, 3, 28, "Input",ExpressionUUID->"c7fa1933-7e03-485b-817d-016728e154b7"],
-Cell[121823, 2516, 361, 9, 28, "Message",ExpressionUUID->"849789e5-7d63-4481-8401-0812bfd806ae"],
-Cell[122187, 2527, 155, 2, 32, "Output",ExpressionUUID->"a7119fc2-37ef-4b29-bb72-590dc245eed1"]
+Cell[152796, 3204, 188, 2, 28, "Input",ExpressionUUID->"497517ea-dfcd-4b63-9977-cf0c73b6c20c"],
+Cell[152987, 3208, 237, 6, 32, "Output",ExpressionUUID->"261a0927-191f-4c51-894e-8df1b6d4bd4d"]
 }, Open  ]],
 Cell[CellGroupData[{
-Cell[122379, 2534, 198, 2, 28, "Input",ExpressionUUID->"435484ae-c60a-4a16-b48a-a96e3948ec81"],
-Cell[122580, 2538, 228, 3, 32, "Output",ExpressionUUID->"322525c5-4ca6-492e-8a45-bf18eb6ef5b5"]
+Cell[153261, 3219, 204, 3, 28, "Input",ExpressionUUID->"c7fa1933-7e03-485b-817d-016728e154b7"],
+Cell[153468, 3224, 361, 9, 28, "Message",ExpressionUUID->"849789e5-7d63-4481-8401-0812bfd806ae"],
+Cell[153832, 3235, 155, 2, 32, "Output",ExpressionUUID->"a7119fc2-37ef-4b29-bb72-590dc245eed1"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[154024, 3242, 198, 2, 28, "Input",ExpressionUUID->"435484ae-c60a-4a16-b48a-a96e3948ec81"],
+Cell[154225, 3246, 228, 3, 32, "Output",ExpressionUUID->"322525c5-4ca6-492e-8a45-bf18eb6ef5b5"]
 }, Open  ]]
 }
 ]
