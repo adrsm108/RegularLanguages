@@ -1,3 +1,5 @@
+(* ::Package:: *)
+
 (* Wolfram Language Package *)
 (* Created by the Wolfram Language Plugin for IntelliJ, see http://wlplugin.halirutan.de/ *)
 
@@ -17,8 +19,11 @@
 
 Package["RegularLanguages`"]
 
+
+
 (* ::Section:: *)
 (* Macros *)
+
 
 PackageScope["absOpt"]
 absOpt::usage = "absOpt[expr, name] returns the value of the rule obtained from AbsoluteOptions[expr, name]";
@@ -101,8 +106,11 @@ SetAttributes[firstReaped, HoldRest];
 firstReaped[tag_ : None, expr_] := First[Last@Reap[expr, tag], {}];
 firstReaped[tag_] := Function[{expr}, firstReaped[tag, expr], HoldFirst];
 
+
+
 (* ::Section:: *)
 (* Functions *)
+
 
 PackageScope["filterOpts"]
 filterOpts::usage = "
@@ -233,7 +241,7 @@ makeAutomatonSummaryBoxes::usage = "makeAutomatonSummaryBoxes[A] generates displ
 makeAutomatonSummaryBoxes[A : (head : NFA | DFA)[asc_],
   form : (StandardForm | TraditionalForm)] :=
   BoxForm`ArrangeSummaryBox[
-    head, A, Null (*makeThumbnail[A]*),
+    head, A, makeThumbnail[A],
     makeAutomatonUpperSummary[A],
     makeAutomatonStateSummary[A],
     form, "Interpretable" -> Automatic];
@@ -300,8 +308,11 @@ makeStateIDs[n, f] returns {f[1], f[2], ..., f[n]}.
 makeStateIDs[{q1, q2, ...}, f] returns {f[q1], f[q2], ...}. If f is omitted, {q1, q2, ...} is returned unchanged.";
 makeStateIDs[k : (_Integer | _List), f_ : Automatic] := If[ListQ@k, Map, Array][autoAlt[f, Identity], k];
 
+
+
 (* ::Section:: *)
 (* Private functions *)
+
 
 spanLength[i_ ;; j_ ;; k_ : 1] := 1 + Floor[(j - i) / k];
 
