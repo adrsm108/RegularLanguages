@@ -18,13 +18,10 @@ Package["RegularLanguages`"]
 (* NFAs *)
 
 (* ::Section:: *)
-(* Clear Symbols *)
-
-(* ::Section:: *)
 (* Exported Functions *)
 
 PackageExport["NFAState"]
-NFAState::usage = "
+NFAState::usage = "\
 NFAState[q, <|a -> {q1, q2 ...}, ...|>] represents the nonterminal state q in an NFA with transitions \[Delta](q, a) = {q1, q2, ...}.
   - Keys[NFAState[q, trns]] is equivalent to Keys[trns].
   - Values[NFAState[q, trns]] is equivalent to Values[trns].
@@ -46,7 +43,7 @@ NFAState /: Values[NFAState[_, d_, ___]] := Values[d];
 PackageExport["NFAQ"]
 NFAQ::usage = "NFAQ[A] yields True if A is a valid NFA.";
 NFAQ[NFA[_?nfaAscQ]] = True;
-NFAQ[g: (_Graph | Graph3D)] := NFAQ[Quiet@AnnotationValue[g, "Automaton"]];
+NFAQ[g : (_Graph | Graph3D)] := NFAQ[Quiet@AnnotationValue[g, "Automaton"]];
 NFAQ[_] = False;
 
 PackageExport["NFA"]
@@ -117,49 +114,84 @@ NFA /: MakeBoxes[nfa : NFA[asc_?nfaAscQ], form : (StandardForm | TraditionalForm
 (* Constructors *)
 
 PackageExport["RandomNFA"]
-RandomNFA::usage = "RandomNFA[n, k] creates a random NFA with n states on an alphabet of k symbols.";
+RandomNFA::usage = "\
+RandomNFA[{q1, q2, ...}, {a1, a2, ...}] creates a random NFA with states q1, q2, ... and alphabet a1, a2, ... .
+RandomNFA[n, k] creates a random NFA with n states on an alphabet of k symbols.
+  - One of n or k can be a list, like in the above case.
+  - Default state ids are 1, 2, ... , n
+  - Default symbols are \"a\", \"b\", ... (ascii character range 97 to 97 + k) if k <= 26, or \"x1\", \"x2\", ... \"xk\" otherwise.
+  - If a function f is provided for the \"StatesFunction\"/\"AlphabetFunction\" option, the states/alphabet will be Array[f, n]/Array[f, k].
+RandomNFA[..., maxn, maxk] specifies each state of the returned NFA should define transitions on no more than maxk symbols, \
+and transition to no more than maxn states on any one symbol.
+  - Non-integer values given for maxn/maxk are interpreted as factors of the total number of states/symbols.
+
+Options:
+\"InitialStates\" -> _Integer | _?NumericQ
+  Number of initial states in the returned NFA
+  - n_Integer: n initial states.
+  - x_?NumericQ: Ceiling[x * n] initial states, where n is the total number of states.
+\"TerminalStates\" -> _Integer | _?NumericQ
+  Number of terminal states in the returned NFA
+  - n_Integer: n terminal states.
+  - x_?NumericQ: Ceiling[x * n] terminal states, where n is the total number of states.
+\"StatesFunction\" -> _
+  Function to generate state names, applied to the list of states or Range[n]
+\"AlphabetFunction\" -> _
+  Function to generate alphabet symbols, applied to the list of symbols or Range[k]
+\"AllStatesReachable\" -> True | False
+  Whether the returned NFA must be connected.
+\"EpsilonProbability\" -> _?(Between[{0, 1}])
+  The probability of a given state generating an Epsilon-transition.";
 RandomNFA::nstates = "Cannot take `1` state names from `2`.";
 RandomNFA::nsymbs = "Cannot take `1` symbols from `2`.";
 Options[RandomNFA] = {
-  EpsilonProbability -> 0.01,
-  TerminalStates -> 0.3,
-  InitialStates -> 1,
-  AllStatesReachable -> True,
-  AlphabetFunction -> Automatic,
-  StatesFunction -> Automatic};
+  "EpsilonProbability" -> 0.01,
+  "TerminalStates" -> 0.3,
+  "InitialStates" -> 1,
+  "AllStatesReachable" -> True,
+  "AlphabetFunction" -> Automatic,
+  "StatesFunction" -> Automatic
+};
+OptionChecks[RandomNFA] = {
+  "EpsilonProbability" -> _?(Between[{0, 1}]),
+  "InitialStates" -> _Integer | _?NumericQ,
+  "TerminalStates" -> _Integer | _?NumericQ,
+  "AllStatesReachable" -> True | False
+};
 RandomNFA[statesin : (_List | _Integer), alphin : (_List | _Integer),
   Optional[pn : (Automatic | _?Positive), Automatic],
   Optional[pk : (Automatic | _?Positive), Automatic],
-  opts : OptionsPattern[RandomNFA]] := With[{
-  n = when[statesin, _Integer, Length@statesin],
-  k = when[alphin, _Integer, Length@alphin]},
+  opts : OptionsPattern[RandomNFA]?(validQ@RandomNFA)] :=
   With[{
-    maxsymbols = intProp[autoAlt[pk, Ceiling@Log[k + 1]], k],
-    maxstates = intProp[autoAlt[pn, Ceiling@Min[Log[n + 1], 0.18 n]], n],
-    nterm = intProp[OptionValue[TerminalStates], n],
-    ninit = intProp[OptionValue[InitialStates], n],
-    alph = makeAlphabet[alphin, OptionValue[AlphabetFunction]],
-    ids = makeStateIDs[statesin, OptionValue[StatesFunction]]},
-    Module[{states, init, reachable, unreachable},
-      init = RandomSample[ids, UpTo[ninit]];
-      states = AssociationThread[ids,
-        MapThread[
-          Association@If[#2 <= 0, #1,
-            Append[#1, Epsilon -> RandomSample[ids, Min[#2, maxstates]]]]&,
-          {Thread[# -> randomSubset[ids, {1, Min[n, maxstates]}, Length@#]]&
-            /@ randomSubset[alph, {0, Min[k, maxsymbols]}, n],
-            RandomVariate[BinomialDistribution[n, OptionValue[EpsilonProbability]], n]}]];
-      If[OptionValue[AllStatesReachable],
-        unreachable = Complement[ids, reachable = TransitiveClosure[init, states]];
-        While[Length@unreachable > 0,
-          (If[KeyExistsQ[states[#1], #2],
-            AppendTo[states[#1, #2], First@unreachable],
-            states[#1, #2] = {First@unreachable}])&
-            @@ (RandomChoice /@ {reachable, alph});
-          unreachable = Complement[unreachable,
-            reachable = Union[reachable, TransitiveClosure[{First@unreachable}, states]]]]];
-      NFA[states, init, RandomSample[ids, UpTo[nterm]]]]]
-];
+    n = when[statesin, _Integer, Length@statesin],
+    k = when[alphin, _Integer, Length@alphin]},
+    With[{
+      maxsymbols = intProp[autoAlt[pk, Ceiling@Log[k + 1]], k],
+      maxstates = intProp[autoAlt[pn, Ceiling@Min[Log[n + 1], 0.18 n]], n],
+      nterm = intProp[OptionValue["TerminalStates"], n],
+      ninit = intProp[OptionValue["InitialStates"], n],
+      alph = makeAlphabet[alphin, OptionValue["AlphabetFunction"]],
+      ids = makeStateIDs[statesin, OptionValue["StatesFunction"]]},
+      Module[{states, init, reachable, unreachable},
+        init = RandomSample[ids, UpTo[ninit]];
+        states = AssociationThread[ids,
+          MapThread[
+            Association@If[#2 <= 0, #1,
+              Append[#1, Epsilon -> RandomSample[ids, Min[#2, maxstates]]]]&,
+            {Thread[# -> randomSubset[ids, {1, Min[n, maxstates]}, Length@#]]&
+              /@ randomSubset[alph, {0, Min[k, maxsymbols]}, n],
+              RandomVariate[BinomialDistribution[n, OptionValue["EpsilonProbability"]], n]}]];
+        If[OptionValue["AllStatesReachable"],
+          unreachable = Complement[ids, reachable = TransitiveClosure[init, states]];
+          While[Length@unreachable > 0,
+            (If[KeyExistsQ[states[#1], #2],
+              AppendTo[states[#1, #2], First@unreachable],
+              states[#1, #2] = {First@unreachable}])&
+              @@ (RandomChoice /@ {reachable, alph});
+            unreachable = Complement[unreachable,
+              reachable = Union[reachable, TransitiveClosure[{First@unreachable}, states]]]]];
+        NFA[states, init, RandomSample[ids, UpTo[nterm]]]]]
+  ];
 
 PackageExport["NthFromLastNFA"]
 NthFromLastNFA::usage = "NthFromLastNFA[n] returns an NFA accepting the language of strings over {\"a\", \"b\"} whose n-th from last character is \"a\"
@@ -274,29 +306,62 @@ primeGrids[ram_] := With[{primes = CreateDataStructure["LinkedList"],
   ]];
 
 PackageExport["MinimizeNFA"]
-MinimizeNFA::usage = "
-MinimizeNFA[nfa] finds an equivalent NFA with fewer states than the original through exhaustive search using the Kameda-Weiner algorithm.
-  - If a smaller NFA does not exist, the original is returned.";
-MinimizeNFA[nfa_?NFAQ] :=
-  Module[{B, nfaB, ram, rows, isCover, states, idxs, initidx, termidxs,
-    grids, tryMakeLegitNFA, res},
-    B = ToDFA[nfa, Method -> "MinimalSubset"];
+MinimizeNFA::usage = "\
+MinimizeNFA[nfa] attempts to find an equivalent NFA with fewer states than the original.
+If a NFA with fewer states is not found, the original is returned.
+
+Options:
+
+Method -> \"Exhaustive\" | \"SimulatedAnnealing\" | Automatic
+The method to use for minimization.
+  - \"Exhaustive\": Deterministic, exhaustive search.
+    - State count of a Returned NFA is guarenteed to be minimal
+    - The poor scaling of this algorithm renders it unsuitable for all but the simplest inputs.
+  - \"SimulatedAnnealing\": Probabilistic local search based on simulated annealing.
+    - Heuristic optimization suitable for small to medium NFAs.
+    - Non-deterministic. In general, obtaining the same result on different runs is not to be expected
+  - Automatic: Choose a suitable method automatically based on the number of prime grids identified.
+
+MaxIterations -> _Integer?Positive
+Maximum number of annealing steps to perform before returning when Method -> \"SimulatedAnnealing\".";
+Options[MinimizeNFA] = { Method -> Automatic, MaxIterations -> 250 };
+OptionChecks[MinimizeNFA] = { Method -> Automatic | "SimulatedAnnealing" | "Exhaustive", MaxIterations -> _Integer?Positive };
+MinimizeNFA[nfa_?NFAQ, OptionsPattern[MinimizeNFA]?(validQ @ MinimizeNFA)] :=
+  Module[{B, nfaB, ram, rows, isCover, states, idxs, initidx, termidxs, pGrids, tryMakeLegitNFA, res},
+    B = ToDFA[nfa, Method -> "Minimal", "StateNames" -> "Subset"];
     nfaB = NFA[B];
     ram = Table[Boole[IntersectingQ[p, q]],
       {p, rows = DeleteCases[IDs[B], {}]},
       {q, DeleteCases[
-        IDs[ToDFA[FAReversal@nfa,
-          Method -> "MinimalSubset"]], {}]}];
+        IDs[ToDFA[FAReversal@nfa, Method -> "Minimal",
+          "StateNames" -> "Subset"]], {}]}];
     states = Values@KeyDrop[States@B, {{}}];
     idxs = PositionIndex[rows ~ Append ~ {}][[All, 1]];
     initidx = idxs[First@IDs[B, "Initial"]];
     termidxs = Lookup[idxs, IDs[B, "Terminal"]];
-    grids = primeGrids[ram];
-    PrintTemporary[Length@grids, " prime grids computed."];
+    pGrids = primeGrids[ram];
+    PrintTemporary[Length@pGrids, " prime grids computed."];
+
+    Switch[OptionValue[Method],
+      "Exhaustive", reduceGridsExhaustive,
+      "SimulatedAnnealing", reduceGridsSA,
+      Automatic,
+      With[ {nGrids = Length @ pGrids},
+        If[NSum[Binomial[nGrids, k],
+          {k, Ceiling[Log2[StateCount@B]],
+            Min[nGrids, StateCount[nfa] - 1, StateCount[B] - 1]}]
+          <= 256 , reduceGridsExhaustive, reduceGridsSA]]
+    ][nfa, B, nfaB, ram, rows, states, idxs, initidx, termidxs, pGrids, OptionValue[MaxIterations]]
+  ];
+
+reduceGridsExhaustive[nfa_, B_, nfaB_, ram_, rows_, states_, idxs_, initidx_, termidxs_, grids_, iterations_] :=
+  Module[{isCover, tryMakeLegitNFA, nCandidates, maxi,
+    mini = Ceiling[Log2[StateCount@B]],
+    nGrids = Length@grids},
     With[{goals = Position[ram, 1]},
       isCover[x_] := ContainsAll[Catenate[Tuples /@ x], goals]];
 
-    tryMakeLegitNFA[subset_] := If[! isCover[subset], $Failed,
+    tryMakeLegitNFA[subset_] := If[!isCover[subset], $Failed,
       Module[{selps, newinits, newstates, newterms,
         f = With[{rang = rangeOver[subset], halfcov = subset[[All, 1]]},
           AssociationMap[
@@ -306,12 +371,11 @@ MinimizeNFA[nfa_?NFAQ] :=
         {newstates, newterms} = Reap[Table[
           NFAState[i,
             Merge[
-              Transitions /@
-                states[[selps = Select[rangeOver[f], MemberQ[f[#], i] &]]],
-              Intersection @@ (f@*idxs /@ #) &],
+              Transitions /@ states[[selps = Select[rangeOver[f], MemberQ[f[#], i] &]]],
+              Intersection @@ (f@*idxs /@ #) &] ,
             {MemberQ[newinits, i],
-
-              If[ContainsOnly[selps, termidxs], Sow[i, "terms"]; True,
+              If[ContainsOnly[selps, termidxs],
+                (Sow[i, "terms"]; True),
                 False]}],
           {i, Length@subset}], "terms"];
         With[{intRuleNFA = NFA[
@@ -319,105 +383,89 @@ MinimizeNFA[nfa_?NFAQ] :=
           "initial" -> newinits,
           "terminal" -> First[newterms, {}],
           "alphabet" -> LanguageAlphabet[B]]},
-          If[EquivalentFAQ[intRuleNFA, nfaB],
-            intRuleNFA, $Failed]]]];
+          If[EquivalentFAQ[intRuleNFA, nfaB], intRuleNFA, $Failed]]]];
 
-    Catch[
-      Do[throwIf[Not@*FailureQ,
-        Quiet@ParallelTry[tryMakeLegitNFA, Subsets[grids, {i}]]],
-        {i,
-          Range[Ceiling[Log2[StateCount@B]],
-            Min[Length@grids, StateCount[nfa] - 1, StateCount[B] - 1]]}];
-      First@MinimalBy[{FAExpression@nfa, nfaB}, StateCount]]];
+    maxi = Min[nGrids, StateCount[nfa] - 1, StateCount[B] - 1];
+    nCandidates = NSum[Binomial[nGrids, k], {k, mini, maxi}];
+    PrintTemporary[nCandidates, " candidate NFAs must be checked for equivalence."];
+    Catch[Do[
+      throwIf[Not@*FailureQ, Quiet@ParallelTry[tryMakeLegitNFA, Subsets[grids, {i}]]];
+      PrintTemporary["No Equivalent NFAs with ", i, If[i === 1, " state", " states"],
+        " exist. (", (nCandidates -= Binomial[nGrids, i]), " canditates remain)"]
+      , {i, Range[mini, maxi]}];
+    First@MinimalBy[{FAExpression@nfa, nfaB}, StateCount]]
+  ];
 
-PackageExport["ReduceNFA"]
-ReduceNFA::usage = "ReduceNFA[nfa] attempts to return an equivalent NFA with fewer states using a simulated annealing heuristic.
-Results are non-deterministic, and if a smaller equivalent NFA is not found, the original is returned.";
-Options[ReduceNFA] = {MaxIterations -> 250};
-ReduceNFA[nfa_?NFAQ] :=
-  Module[{B, nfaB, ram, rows, goals, isCover, states, idxs, initidx,
-    termidxs, grids, tryMakeLegitNFAFromIdxs, res, goalComplement,
-    feasibleNeighbor, whereIs, optimizeCover, covers, imax, iterations,
-    flipProb = 0.05},
-    iterations = OptionValue[MaxIterations];
-    B = ToDFA[nfa, Method -> "MinimalSubset"];
-    nfaB = NFA[B];
-    ram = Table[Boole[IntersectingQ[p, q]],
-      {p, rows = DeleteCases[IDs[B], {}]},
-      {q, DeleteCases[
-        IDs[ToDFA[FAReversal@nfa,
-          Method -> "MinimalSubset"]], {}]}];
-    states = Values@KeyDrop[States@B, {{}}];
-    idxs = PositionIndex[rows ~ Append ~ {}][[All, 1]];
-    initidx = idxs[First@IDs[B, "Initial"]];
-    termidxs = Lookup[idxs, IDs[B, "Terminal"]];
-    grids = primeGrids[ram];
-    goals = Position[ram, 1];
-    isCover[x_] :=
-      And @@ MapThread[ContainsAll, {Join[Sequence @@ x, 2], goals}];
+reduceGridsSA[nfa_, B_, nfaB_, ram_, rows_, states_, idxs_, initidx_, termidxs_, grids_, iterations_] :=
+  Module[{isCover, tryMakeLegitNFAFromIdxs, res, goalComplement,
+    feasibleNeighbor, whereIs, optimizeCover, covers, imax,
+    flipProb = 0.05, goals = Position[ram, 1]},
+
+    isCover[x_] := And @@ MapThread[ContainsAll, {Join[Sequence @@ x, 2], goals}];
+
     whereIs = Module[{i = 1},
       Association@Last@Reap[
-        Scan[With[{j = i++}, Outer[Sow[j, {{##}}] &, Sequence @@ #]] &,
-          grids],
-        _, Rule]];
+        Scan[With[{j = i++}, Outer[Sow[j, {{##}}] &, Sequence @@ #]] & , grids],
+        _,
+        Rule]];
 
-    feasibleNeighbor[vec_] := Module[
-      {newvec =
-        Unitize[vec -
-          RandomChoice[{flipProb, 1 - flipProb} -> {1, 0}, Length@vec]],
-        comp, i = 0, bit},
-      comp =
-        Complement[goals, Catenate[Tuples /@ Pick[grids, newvec, 1]]];
-      While[Length@comp > 0,
-        bit = RandomChoice[whereIs[RandomChoice@comp]];
-        newvec[[bit]] = 1;
-        comp = Complement[comp, Tuples@grids[[bit]]]];
-      newvec
-    ];
-
-    optimizeCover[
-      initSolution : _?VectorQ :
-        feasibleNeighbor@ConstantArray[0, Length@grids],
-      initTemp : _?NumericQ : 10,
-      alpha : _?(Between[{0, 1}]) : 0.9] :=
-      Module[{k = 0, temp = initTemp,
-        solution = initSolution, cost = Total@initSolution,
-        bestSolutions = CreateDataStructure["HashSet"], bestCost,
-        newSolution, newCost},
-        bestSolutions["Insert", solution];
-        bestCost = cost;
-        While[k++ < iterations,
-          newSolution = feasibleNeighbor[solution];
-          newCost = Total@newSolution;
-          If[newCost < bestCost,
-            bestSolutions["RemoveAll"];
-            bestCost = newCost
-          ];
-          If[newCost == bestCost,
-            bestSolutions["Insert", newSolution]];
-          If[newCost <= cost ||
-            RandomReal[] <= Quiet@Exp[-(newCost - cost) / temp],
-            solution = newSolution];
-          temp *= alpha
-        ];
-        {bestCost, Normal@bestSolutions}
+    feasibleNeighbor[vec_] :=
+      Module[{comp, bit,
+        newvec = Unitize[
+          vec - RandomChoice[{flipProb, 1 - flipProb} -> {1, 0}, Length@vec]],
+        i = 0},
+        comp = Complement[goals, Catenate[Tuples /@ Pick[grids, newvec, 1]]];
+        While[Length@comp > 0,
+          bit = RandomChoice[whereIs[RandomChoice@comp]];
+          newvec[[bit]] = 1;
+          comp = Complement[comp, Tuples@grids[[bit]]]];
+        newvec
       ];
 
+    With[{initTemp = 10, alpha = 0.9},
+      optimizeCover[] :=
+        Module[{newSolution, newCost, solution, cost, bestCost,
+          k = 0,
+          temp = initTemp,
+          initSolution = feasibleNeighbor@ConstantArray[0, Length@grids],
+          bestSolutions = CreateDataStructure["HashSet"]},
+          solution = initSolution;
+          cost = Total@initSolution;
+          bestSolutions["Insert", solution];
+          bestCost = cost;
+          While[k++ < iterations,
+            newSolution = feasibleNeighbor[solution];
+            newCost = Total@newSolution;
+            If[newCost < bestCost,
+              bestSolutions["RemoveAll"];
+              bestCost = newCost];
+            If[newCost == bestCost,
+              bestSolutions["Insert", newSolution]];
+            If[newCost <= cost || RandomReal[] <= Quiet@Exp[-(newCost - cost) / temp],
+              solution = newSolution];
+            temp *= alpha ];
+
+          {bestCost, Normal@bestSolutions}
+        ]
+    ];
+
     tryMakeLegitNFAFromIdxs[is_] :=
-      Module[{cover = Pick[grids, is, 1], selps, newinits, newstates,
-        newterms, f},
+      Module[{selps, newinits, newstates, newterms, f,
+        cover = Pick[grids, is, 1]},
         f = With[{rang = rangeOver[cover], halfcov = cover[[All, 1]]},
           AssociationMap[
-            Function[{z}, Select[rang, MemberQ[halfcov[[#]], z] &]],
-            Range[Length@rows + 1]]];
+            Function[{z}, Select[rang, MemberQ[halfcov[[#]], z] &]]
+            , Range[Length@rows + 1]]];
         newinits = f@initidx;
         {newstates, newterms} = Reap[Table[
           NFAState[i,
             Merge[
               Transitions /@
+
                 states[[selps = Select[rangeOver[f], MemberQ[f[#], i] &]]],
               Intersection @@ (f@*idxs /@ #) &],
             {MemberQ[newinits, i],
+
               If[ContainsOnly[selps, termidxs], Sow[i, "terms"]; True,
                 False]}],
           {i, Length@cover}], "terms"];
@@ -426,14 +474,17 @@ ReduceNFA[nfa_?NFAQ] :=
           "initial" -> newinits,
           "terminal" -> First[newterms, {}],
           "alphabet" -> LanguageAlphabet[B]]},
+
           If[EquivalentFAQ[intRuleNFA, nfaB], intRuleNFA, $Failed]]];
 
     Quiet@LaunchKernels[];
-    imax = Min[Length@grids, StateCount[nfa] - 1, StateCount[nfaB] - 1];
+    imax =
+      Min[Length@grids, StateCount[nfa] - 1, StateCount[nfaB] - 1];
     Catch[
       Do[throwIf[Not@*FailureQ,
         Quiet@ParallelTry[tryMakeLegitNFAFromIdxs, covs]],
         {covs,
           SortBy[ParallelTable[optimizeCover[], {Max[$KernelCount, 1]}],
             First][[All, 2]]}];
-      First@MinimalBy[{FAExpression@nfa, nfaB}, StateCount]]]
+      First@MinimalBy[{FAExpression@nfa, nfaB}, StateCount]]
+  ]

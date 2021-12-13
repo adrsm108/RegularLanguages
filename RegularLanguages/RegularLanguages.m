@@ -19,32 +19,14 @@ Package["RegularLanguages`"]
 (* ::Section:: *)
 (* Symbols *)
 
-
-PackageExport["EpsilonProbability"]
 EpsilonProbability::usage = "EpsilonProbability is an option for RandomNFA and RandomRE that specifies the probability a given symbol will be Epsilon.";
-
-PackageExport["ClosureProbability"]
 ClosureProbability::usage = "ClosureProbability is an option for RandomRE that specifies the probability a given subexpression will be wrapped with REClosure.";
-
-PackageExport["UnionProbability"]
 UnionProbability::usage = "UnionProbability is an option for RandomRE that specifies the relative frequency of REUnion vs REConcat in the final expression.";
-
-PackageExport["TerminalStates"]
 TerminalStates::usage = "TerminalStates is an option for RandomNFA and RandomDFA that specifies the number of terminal (accepting) states in the result.";
-
-PackageExport["InitialStates"]
 InitialStates::usage = "InitialStates is an option for RandomNFA that specifies the number of initial states in the result.";
-
-PackageExport["AllStatesReachable"]
 AllStatesReachable::usage = "AllStatesReachable is an option for RandomDFA and RandomNFA that specifies whether to ensure all states in the result are reachable.";
-
-PackageExport["StatesFunction"]
 StatesFunction::usage = "StatesFunction is an option for RandomDFA and RandomNFA that specifies the function to use for generating state ids.";
-
-PackageExport["AlphabetFunction"]
 AlphabetFunction::usage = "AlphabetFunction is an option for RandomDFA, RandomNFA, and RandomRE that specifies the function to use for generating the alphabet of the output.";
-
-PackageExport["SimplificationFunction"]
 SimplificationFunction::usage = "SimplificationFunction is an option for ToRE that specifies the function that should be used to simplify intermediate results.";
 
 PackageExport["Epsilon"]
@@ -90,7 +72,7 @@ LanguageAlphabet[L] returns the alphabet of the language represented by L, where
       2. expr is not descended from any expression satisfying the previous rule.
 
 Options:
-\"IncludeEpsilon\": True | False | Automatic
+\"IncludeEpsilon\" -> True | False | Automatic
   - True: the returned list always includes Epsilon.
   - False: the returned list never includes Epsilon.
   - Automatic: the returned list only includes Epsilon when the language contains explicit Epsilon-productions.";
@@ -134,7 +116,7 @@ REClosure[a] formats as a* (SuperStar[a], shortcut Ctrl + ^, * ). SuperStar is r
 Epsilon formats as \[CurlyEpsilon], (\\[CurlyEpsilon], alias \[AliasIndicator]ce\[AliasIndicator]) and \[CurlyEpsilon] will be set to Epsilon if it is not yet defined.
 EmptyLanguage formats as \[EmptySet] (\\[EmptySet], alias \[AliasIndicator]es\[AliasIndicator]), and \[EmptySet] will be set to EmptyLanguage if it is not yet defined.
 UseNotation[False] removes all extra definitions and formatting rules.";
-UseNotation::clobber = "Symbol `1` will not be set to `2` because a previous definition exists.";
+UseNotation::clobber = "Symbol `1` will not be set to `2` because a previous definition `3` exists.";
 UseNotation[use : True | False] := (
   If[use,
     (
@@ -159,8 +141,7 @@ UseNotation[use : True | False] := (
       REClosure /: MakeBoxes[e : REClosure[x___], form : (TraditionalForm | StandardForm)] :=
         With[{boxes = MakeBoxes[SuperStar[x], form]},
           InterpretationBox[boxes, e]];
-      Protect[REUnion, REConcat, REClosure, EmptyLanguage, Epsilon];
-      use),
+      Protect[REUnion, REConcat, REClosure, EmptyLanguage, Epsilon]; ),
     (Quiet[
       unprotectAndUnset[Global`\[CurlyEpsilon]];
       unprotectAndUnset[Global`\[EmptySet]];
@@ -174,15 +155,17 @@ UseNotation[use : True | False] := (
       REConcat /: MakeBoxes[e : REConcat[x___], form : (TraditionalForm | StandardForm)] =. ;
       REClosure /: MakeBoxes[e : REClosure[x___], form : (TraditionalForm | StandardForm)] =. ;
       Protect[REUnion, REConcat, REClosure, EmptyLanguage, Epsilon];
-    ];
-    use)
-  ]
+    ]; )
+  ];
+use
 );
+
+UseNotation[True];
 
 SetAttributes[setNoClobber, HoldFirst];
 setNoClobber[symb_, val_] :=
   If[ValueQ[symb] && symb =!= val,
-    Message[UseNotation::clobber, HoldForm[symb], val],
+    Message[UseNotation::clobber, HoldForm[symb], val, symb],
     Unprotect[symb];
     symb = val;
     Protect[symb];

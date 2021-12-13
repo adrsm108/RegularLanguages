@@ -36,7 +36,7 @@ OptionValue::invform = "Option `1` for `2` received unrecognized form `3`. Value
 optValueMatchesQ[f_, patt_][k_ -> v_] :=
   MatchQ[v, patt] || Message[OptionValue::invform, k, f, v, patt] || False;
 
-PackageExport["OptionChecks"]
+PackageScope["OptionChecks"]
 OptionChecks::usage = "OptionChecks[f] gives {} by default.
 Setting OptionChecks[f] = {opt1 -> patt1, opt2 -> patt2, ...}, where the opt_i are options of f, and patt_i are patterns will ensure that \
 OptionPatterns[f]?(validQ[f]) only matches the opti when their values match patti, issuing a message otherwise.";
@@ -53,7 +53,7 @@ optionChecks[_] = {};
 (*    attachCheckMessage[f] ^= True*)
 (*  ];*)
 
-PackageExport["validQ"]
+PackageScope["validQ"]
 validQ::usage = "The pattern OptionsPattern[]?(validQ[f]) will only match a rule whose lhs is a key in optionChecks[f] \
 when its rhs matches the associated pattern in optionChecks[f].";
 validQ[f_][opts___] := AllTrue[OptionChecks[f],

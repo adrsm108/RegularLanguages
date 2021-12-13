@@ -29,11 +29,11 @@ REQ::usage = "REQ[expr] yields True when expr has head Regex, or satisfies Compo
 REQ[expr, patt] gives True if expr is EmptyLanguage or Epsilon, or of the form Regex[x] where x matches patt, or is a compound regex where every subexpression at level -1 that is not EmptyLanguage or Epsilon matches patt.";
 REQ[r : (EmptyLanguage | Epsilon | _Regex | _?CompoundREQ)] = True;
 REQ[_] = False;
-REQ[r_, patt_] :=
-  (MatchQ[r, _Regex] && MatchQ[First@r, patt]) || CompoundREQ[r, patt];
+REQ[r_, patt_] := (MatchQ[r, _Regex] && MatchQ[First@r, patt]) || CompoundREQ[r, patt];
 
 PackageExport["CompoundREQ"]
-CompoundREQ::usage = "CompoundREQ[expr] returs True if expr has head REUnion, REConcat, or REClosure.
+CompoundREQ::usage = "\
+CompoundREQ[expr] returns True if expr has head REUnion, REConcat, or REClosure.
 CompoundREQ[expr, patt] returns True if expr is a compound regex and every character in the standard alphabet of regex matches patt.";
 CompoundREQ[_REConcat | _REUnion | _REClosure] = True;
 CompoundREQ[_] = False;
@@ -41,7 +41,8 @@ CompoundREQ[r : (_REConcat | _REUnion | _REClosure), patt_] :=
   AllTrue[LanguageAlphabet[r, "IncludeEpsilon" -> False], MatchQ[patt]];
 
 PackageExport["REMatchQ"]
-REMatchQ::usage = "REMatchQ[expr, regex] returns True if expr is matched by regex.
+REMatchQ::usage = "\
+REMatchQ[expr, regex] returns True if expr is matched by regex.
 REMatchQ[regex] represents an operator form of REMatchQ.";
 REMatchQ[Epsilon, r_] := matchesEmptyQ[r];
 REMatchQ[input_String, r_ /; CompoundREQ[r, _String]] := StringMatchQ[input, RegularExpression[ToREString[r]]];
@@ -169,17 +170,17 @@ RandomRE::usage = "RandomRE[n, k] returns a random regular expression on n symbo
 RandomRE[n,k,p] returns a random regular expression of n symbols from an alphabet of length k, where p is the probability of grouping.";
 RandomRE::probprm = "Parameter `1` at position `2` in `3` is expected to be a probability strictly less than 1.";
 Options[RandomRE] = {
-  ClosureProbability -> 0.2,
-  UnionProbability -> 0.3,
+  "ClosureProbability" -> 0.2,
+  "UnionProbability" -> 0.3,
   TimeConstraint -> 0.1,
-  AlphabetFunction -> Automatic,
-  EpsilonProbability -> 0
+  "AlphabetFunction" -> Automatic,
+  "EpsilonProbability" -> 0
 };
 RandomRE[n_Integer, alphin : (_List | _Integer), p : _?NumericQ : 0.5, OptionsPattern[]] :=
   With[{k = when[alphin, _Integer, Length@alphin],
     c1 = N[{1 - p, p}] -> {True, False},
-    c2 = N[{#, 1 - #}&@OptionValue[ClosureProbability]] -> {REClosure, Identity},
-    c3 = N[{#, 1 - #}&@OptionValue[UnionProbability]] -> {REUnion, REConcat},
+    c2 = N[{#, 1 - #}&@OptionValue["ClosureProbability"]] -> {REClosure, Identity},
+    c3 = N[{#, 1 - #}&@OptionValue["UnionProbability"]] -> {REUnion, REConcat},
     tc = OptionValue[TimeConstraint]},
     Replace[
       NestWhile[ (* Iteratively group elements into lists of random length until the entire expression has length 1 *)
@@ -187,7 +188,7 @@ RandomRE[n_Integer, alphin : (_List | _Integer), p : _?NumericQ : 0.5, OptionsPa
         ReplacePart[ (* Randomly replace characters with Epsilon based on EpsilonProbability *)
           RandomChoice[1 ;; k, n], (* Use 1,2,...,k (since alphabet may contain lists we don't want to change) *)
           toAlternatives[
-            RandomSample[1 ;; n, RandomVariate[BinomialDistribution[n, OptionValue[EpsilonProbability]]]]
+            RandomSample[1 ;; n, RandomVariate[BinomialDistribution[n, OptionValue["EpsilonProbability"]]]]
           ] -> Epsilon],
         Length[#] > 1 &,
         1, $IterationLimit, -1],
@@ -198,12 +199,20 @@ RandomRE[n_Integer, alphin : (_List | _Integer), p : _?NumericQ : 0.5, OptionsPa
           tc, (* If evaluation takes too long (> 0.1s by default), it probably means REUnion[x] was selected *)
           REConcat[x]]], (* Default to concatenation *)
       All
-    ] /. AssociationThread[Range[k] -> makeAlphabet[alphin, OptionValue[AlphabetFunction]]] (* Replace indices with
+    ] /. AssociationThread[Range[k] -> makeAlphabet[alphin, OptionValue["AlphabetFunction"]]] (* Replace indices with
       characters of the alphabet. *)
   ];
 
 PackageExport["ParseRE"]
-ParseRE::usage = "ParseRE[str] converts a regex in string form to an expression in terms of REUnion, REConcat, and REClosure. ";
+ParseRE::usage = "\
+ParseRE[str] converts a regex in string form to an expression in terms of REUnion, REConcat, and REClosure.
+Recognized constructs are (from greatest to least precedence)
+  - Prefix \"\\\" escapes the next character.
+  - Round parentheses \"(\" and \")\" indicate grouping.
+  - Postfix \"*\" is parsed as closure.
+  - Juxtaposition is interpreted as concatenation.
+  - Infix \"|\" is parsed as union.
+All other characters are interpreted as string literals of length 1.";
 ParseRE::parsererr = "Something happened at input `1` in `2`";
 ParseRE::badexpect = "Was expecting `1`, but recieved `2`.";
 Options[ParseRE] = {"ParseTree" -> False};
@@ -341,12 +350,12 @@ toRegexArray[A_?FAQ] := With[{
         Association[Reverse[Normal@alphidx, 2]]
       }]]];
 
-Options[reduceREArray] = { Method -> Automatic, SimplificationFunction -> Automatic };
+Options[reduceREArray] = { Method -> Automatic, "SimplificationFunction" -> Automatic };
 reduceREArray::badorder = "Method \"SpecificOrder\" must be specified as {\"SpecificOrder\", perm}, where perm \
   is a valid permutation of ``, and n is the length of the given array.";
 reduceREArray[{array_?SquareMatrixQ, alphabet_}, OptionsPattern[]] := Module[{
   arr = array,
-  simp = unless[OptionValue[SimplificationFunction], Automatic, SimplifyRE, None, Identity]},
+  simp = unless[OptionValue["SimplificationFunction"], Automatic, SimplifyRE, None, Identity]},
   With[{
     idxs = Range[2, Length@arr - 1],
     reduce = regexArrayEliminate[arr, simp],

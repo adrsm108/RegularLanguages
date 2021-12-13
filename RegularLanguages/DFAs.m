@@ -36,9 +36,7 @@ DFAState /: Keys[DFAState[_, d_, ___]] := Keys[d];
 DFAState /: Values[DFAState[_, d_, ___]] := Values[d];
 
 PackageExport["DFAQ"]
-DFAQ::usage = "
-DFAQ[x] returns True if x is a valid DFA.
-";
+DFAQ::usage = "DFAQ[x] returns True if x is a valid DFA.";
 DFAQ[DFA[_?dfaAscQ]] = True;
 DFAQ[g_Graph] := DFAQ[Quiet@AnnotationValue[g, "Automaton"]];
 DFAQ[_] = False;
@@ -145,19 +143,19 @@ DFA /: ToRules[dfa_DFA?DFAQ] :=
 PackageExport["RandomDFA"]
 RandomDFA::usage = "RandomDFA[n,k] gives a random DFA with n states on an alphabet of k symbols.";
 Options[RandomDFA] = {
-  TerminalStates -> 0.3,
-  AlphabetFunction -> Automatic,
-  StatesFunction -> Automatic,
-  AllStatesReachable -> False};
+  "TerminalStates" -> 0.3,
+  "AlphabetFunction" -> Automatic,
+  "StatesFunction" -> Automatic,
+  "AllStatesReachable" -> False};
 RandomDFA[statesin : (_Integer | _List), alphin : (_Integer | _List), OptionsPattern[RandomDFA]] :=
   With[{
     n = when[statesin, _Integer, Length@statesin],
     k = when[alphin, _Integer, Length@alphin]},
     With[{
-      nterm = intProp[OptionValue[TerminalStates], n],
-      ids = makeStateIDs[statesin, OptionValue[StatesFunction]],
-      alph = makeAlphabet[alphin, OptionValue[AlphabetFunction]]},
-      If[OptionValue[AllStatesReachable],
+      nterm = intProp[OptionValue["TerminalStates"], n],
+      ids = makeStateIDs[statesin, OptionValue["StatesFunction"]],
+      alph = makeAlphabet[alphin, OptionValue["AlphabetFunction"]]},
+      If[OptionValue["AllStatesReachable"],
         If[k == 1,
           With[{rs = RandomSample@ids ~ Append ~ RandomChoice[ids]},
             DFA[BlockMap[(First@# -> Rest@#)&, rs, 2, 1],
@@ -215,7 +213,7 @@ Method -> Automatic | \"Minimal\"
   - \"Minimal\": Returned DFA will have minimal states. Equivalent to calling MinimizeDFA on the result.
   - Automatic: Use the subset method for NFAs and regexes.
 
-StateNames -> \"Index\" | \"Subset\"
+\"StateNames\" -> \"Index\" | \"Subset\"
   - \"Index\": Returned dfa has states with integer ids that correspond to their index in States[dfa].
   - \"Subset\": state ids correspond to subsets of the original set of states.
     - When constructed from an NFA with Method -> \"Automatic\", these are the states from the subset method.";
@@ -282,8 +280,8 @@ Options:
 \"StateNames\" -> \"Indexed\" | \"Subset\" | \"SubsetUnion\"
   - \"Indexed\": The state IDs of the new automaton are positive integers.
   - \"Subset\": State IDs are subsets of the IDs of the original, representing equivalence classes in its StatesPartition.
-  - \"SubsetUnion\": Like \"Subset\", but state IDs are the unions of elements of subsets instead of the subsets themselves. \
-Useful when the state IDs of the original automatonn are themselves lists.";
+  - \"SubsetUnion\": Like \"Subset\", but state IDs are the unions of elements of subsets instead of the subsets themselves.
+    - Useful when the state IDs of the original automaton are themselves lists.";
 OptionChecks[MinimizeDFA] = { "StateNames" -> "Index" | "Subset" | "SubsetUnion" };
 MinimizeDFA[dfa_?DFAQ, OptionsPattern[MinimizeDFA]?(validQ@MinimizeDFA)] :=
   With[{rdfa = DeleteUnreachableStates[dfa]},
