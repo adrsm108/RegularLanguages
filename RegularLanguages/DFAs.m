@@ -278,10 +278,10 @@ MinimizeDFA[dfa] returns an equivalent DFA with the minimum number of states.
 
 Options:
 \"StateNames\" -> \"Indexed\" | \"Subset\" | \"SubsetUnion\"
-  - \"Indexed\": The state IDs of the new automaton are positive integers.
-  - \"Subset\": State IDs are subsets of the IDs of the original, representing equivalence classes in its StatesPartition.
-  - \"SubsetUnion\": Like \"Subset\", but state IDs are the unions of elements of subsets instead of the subsets themselves.
-    - Useful when the state IDs of the original automaton are themselves lists.";
+  - \"Indexed\": The state ids of the new automaton are positive integers.
+  - \"Subset\": State ids are subsets of the ids of the original, representing equivalence classes in its StatesPartition.
+  - \"SubsetUnion\": Like \"Subset\", but state ids are the unions of elements of subsets instead of the subsets themselves.
+    - Useful when the state ids of the original automaton are themselves lists.";
 OptionChecks[MinimizeDFA] = { "StateNames" -> "Index" | "Subset" | "SubsetUnion" };
 MinimizeDFA[dfa_?DFAQ, OptionsPattern[MinimizeDFA]?(validQ@MinimizeDFA)] :=
   With[{rdfa = DeleteUnreachableStates[dfa]},

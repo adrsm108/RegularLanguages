@@ -110,11 +110,11 @@ SubsetLanguageQ[L_][Li__] := SubsetLanguageQ[L, Li];
 PackageExport["UseNotation"]
 UseNotation::usage = "UseNotation[use] can be evaluated to add or remove extra notational forms.
 UseNotation[True] is evaluated automatically on package load, and makes the following changes:
-REUnion[a, b,...] formats as a \[VerticalSeparator] b \[VerticalSeparator] ... (\\[VerticalSeparator], alias \[AliasIndicator]|\[AliasIndicator]). VerticalSeparator is redefined to alias REUnion.
-REConcat[a, b,...] formats as a \[CenterDot] b \[CenterDot] ... (\\[CenterDot], alias \[AliasIndicator].\[AliasIndicator]). CenterDot is redefined to alias REConcat.
-REClosure[a] formats as a* (SuperStar[a], shortcut Ctrl + ^, * ). SuperStar is redefined to alias REClosure.
-Epsilon formats as \[CurlyEpsilon], (\\[CurlyEpsilon], alias \[AliasIndicator]ce\[AliasIndicator]) and \[CurlyEpsilon] will be set to Epsilon if it is not yet defined.
-EmptyLanguage formats as \[EmptySet] (\\[EmptySet], alias \[AliasIndicator]es\[AliasIndicator]), and \[EmptySet] will be set to EmptyLanguage if it is not yet defined.
+  - REUnion[a, b,...] formats as a \[VerticalSeparator] b \[VerticalSeparator] ... (\\[VerticalSeparator], alias \[AliasIndicator]|\[AliasIndicator]). VerticalSeparator is redefined to alias REUnion.
+  - REConcat[a, b,...] formats as a \[CenterDot] b \[CenterDot] ... (\\[CenterDot], alias \[AliasIndicator].\[AliasIndicator]). CenterDot is redefined to alias REConcat.
+  - REClosure[a] formats as a* (SuperStar[a], shortcut Ctrl + ^, * ). SuperStar is redefined to alias REClosure.
+  - Epsilon formats as \[CurlyEpsilon], (\\[CurlyEpsilon], alias \[AliasIndicator]ce\[AliasIndicator]) and \[CurlyEpsilon] will be set to Epsilon if it is not yet defined.
+  - EmptyLanguage formats as \[EmptySet] (\\[EmptySet], alias \[AliasIndicator]es\[AliasIndicator]), and \[EmptySet] will be set to EmptyLanguage if it is not yet defined.
 UseNotation[False] removes all extra definitions and formatting rules.";
 UseNotation::clobber = "Symbol `1` will not be set to `2` because a previous definition `3` exists.";
 UseNotation[use : True | False] := (
@@ -127,11 +127,9 @@ UseNotation[use : True | False] := (
       setNoClobber[SuperStar, REClosure];
       Unprotect[REUnion, REConcat, REClosure, EmptyLanguage, Epsilon];
       Epsilon /: MakeBoxes[Epsilon, form : (TraditionalForm | StandardForm)] :=
-        With[{boxes = MakeBoxes["\[CurlyEpsilon]", form]},
-          InterpretationBox[boxes, Epsilon]];
+        InterpretationBox["\[CurlyEpsilon]", Epsilon];
       EmptyLanguage /: MakeBoxes[EmptyLanguage, form : (TraditionalForm | StandardForm)] :=
-        With[{boxes = MakeBoxes["\[EmptySet]", form]},
-          InterpretationBox[boxes, EmptyLanguage]];
+        InterpretationBox["\[EmptySet]", EmptyLanguage];
       REUnion /: MakeBoxes[e : REUnion[x___], form : (TraditionalForm | StandardForm)] :=
         With[{boxes = MakeBoxes[VerticalSeparator[x], form]},
           InterpretationBox[boxes, e]];
@@ -159,8 +157,6 @@ UseNotation[use : True | False] := (
   ];
 use
 );
-
-UseNotation[True];
 
 SetAttributes[setNoClobber, HoldFirst];
 setNoClobber[symb_, val_] :=
