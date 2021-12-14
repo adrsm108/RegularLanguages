@@ -436,8 +436,8 @@ See [UseNotation](#usenotation) for more information.
 
 **Options:** "FullParseTree"
 - **"FullParseTree"** &rarr; (True | False), *default: False*    
-  False: Result expression will use REUnion, REConcat, and REClosure as heads, which automatically reorder and simplify terms.
-  True: Result expression will use Inactive[REUnion], Inactive[REConcat], and Inactive[REClosure].
+  - *False:* Result expression will use [REUnion](#REUnion), [REConcat](#REConcat), and [REClosure](#REClosure) as heads, which automatically reorder and simplify terms.
+  - *True:* Result expression will use Inactive[[REUnion](#REUnion)], Inactive[[REConcat](#REConcat)], and Inactive[[REClosure](#REClosure)].
     - The active form can be recovered by calling Activate on the returned expression.
 
 ### RandomDFA

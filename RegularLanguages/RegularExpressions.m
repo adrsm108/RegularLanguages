@@ -216,8 +216,8 @@ All other characters are interpreted as string literals of length 1.
 
 Options:
 \"FullParseTree\" -> True | False
-  False: Result expression will use REUnion, REConcat, and REClosure as heads, which automatically reorder and simplify terms.
-  True: Result expression will use Inactive[REUnion], Inactive[REConcat], and Inactive[REClosure].
+  - False: Result expression will use REUnion, REConcat, and REClosure as heads, which automatically reorder and simplify terms.
+  - True: Result expression will use Inactive[REUnion], Inactive[REConcat], and Inactive[REClosure].
     - The active form can be recovered by calling Activate on the returned expression.";
 ParseRE::parsererr = "Something happened at input `1` in `2`";
 ParseRE::badexpect = "Was expecting `1`, but recieved `2`.";
