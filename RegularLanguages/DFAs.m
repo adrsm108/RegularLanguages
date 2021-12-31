@@ -28,17 +28,17 @@ DFAState[q, \[Delta], {init, term}] represents a state which is initial if init 
 DFAState[q, ...][a] gives the transition \[Delta](q, a)";
 DFAState::invtr = "Transition `1` is not defined for state `2`.";
 DFAState[id_, d_Association, ___][a_] :=
-  Lookup[d, Key[a], (Message[DFAState::invtr, a, id]; Undefined)];
-DFAState /: MakeBoxes[s : DFAState[_, _?AssociationQ, ___],
-  form : (StandardForm | TraditionalForm)] :=
+  Lookup[d, Key @ a, Message[DFAState::invtr, a, id]; Undefined];
+DFAState /: MakeBoxes[s : DFAState[_, _?AssociationQ, ___], form : (StandardForm | TraditionalForm)] :=
   makeStateSummaryBoxes[s, form];
-DFAState /: Keys[DFAState[_, d_, ___]] := Keys[d];
-DFAState /: Values[DFAState[_, d_, ___]] := Values[d];
+DFAState /: Keys[DFAState[_, d_, ___]] := Keys @ d;
+DFAState /: Values[DFAState[_, d_, ___]] := Values @ d;
+DFAState /: Normal[DFAState[_, d_, ___]] := d;
 
 PackageExport["DFAQ"]
 DFAQ::usage = "DFAQ[x] returns True if x is a valid DFA.";
 DFAQ[DFA[_?dfaAscQ]] = True;
-DFAQ[g_Graph] := DFAQ[Quiet@AnnotationValue[g, "Automaton"]];
+DFAQ[g_Graph] := DFAQ[Quiet @ AnnotationValue[g, "Automaton"]];
 DFAQ[_] = False;
 
 PackageExport["DFA"]
@@ -61,43 +61,41 @@ DFA::badcast = "Cannot automatically convert NFA `1` to DFA. Use ToDFA for subse
 DFA::badinit = "Initial states parameter `1` is not a list of length 1.";
 
 DFA[a___, "states" -> states : {_DFAState ..}, b___] :=
-  DFA[a, "states" -> GroupBy[states, StateID, First], b];
+  DFA[a, "states" -> GroupBy[states, StateName, First], b];
 
 DFA[OrderlessPatternSequence[
   "states" -> states : <|(_ -> _DFAState) ..|>,
-  "initial" -> initial_?validDFAInitQ,
+  "initial" -> initial_?(loudly[validDFAInitQ, DFA::badinit]),
   "terminal" -> terminal_List,
   Optional["alphabet" -> alphabet_List, "alphabet" -> Automatic]]] :=
   DFA[Association @@ {
     "states" -> states,
     "initial" -> initial,
     "terminal" -> terminal,
-    "alphabet" -> autoAlt[alphabet, Union @@ (Keys /@ states)]
+    "alphabet" -> unlessAutomatic[alphabet, Union @@ (Keys /@ states)]
   }];
 
 DFA[states : {(_ -> {___Rule}) ..}, initial_, terminal_List, alphabet_List : Automatic] :=
   Check[
-    If[validDFAInitQ[initial],
+    If[loudly[validDFAInitQ, DFA::badinit]@initial,
       Module[{tostate, stateIDs = states[[All, 1]],
-        alph = autoAlt[alphabet, Union @@ (Keys@Values@states)]},
-        tostate[id_ -> tf_] := With[{symbols = tf[[All, 1]]},
-          Scan[If[! MemberQ[symbols, #], Message[DFA::missingtr, id, #]] &,
-            alph];
-          Scan[Function[
-            If[! MemberQ[alph, #[[1]]], Message[DFA::invtrsym, #[[1]], id]];
-            If[! MemberQ[stateIDs, #[[2]]],
-              Message[DFA::invprod, #[[2]], id, #[[1]]]]],
-            tf];
-          id ->
-            DFAState[id,
-              Association[tf], {MemberQ[initial, id],
-              MemberQ[terminal, id]}]];
-        Scan[If[! MemberQ[stateIDs, #], Message[DFA::invinit, #]] &,
-          initial];
-        Scan[If[! MemberQ[stateIDs, #], Message[DFA::invterm, #]] &,
-          terminal];
+        alph = unlessAutomatic[alphabet, Union @@ (Keys @ Values @ states)]},
+        tostate[id_ -> tf_] :=
+          With[{symbols = tf[[All, 1]]},
+            Scan[If[!MemberQ[symbols, #], Message[DFA::missingtr, id, #]] &,
+              alph];
+            Scan[Function[
+              If[!MemberQ[alph, #[[1]]], Message[DFA::invtrsym, #[[1]], id]];
+              If[!MemberQ[stateIDs, #[[2]]], Message[DFA::invprod, #[[2]], id, #[[1]]]]],
+              tf];
+            id ->
+              DFAState[id,
+                Association[tf], {MemberQ[initial, id],
+                MemberQ[terminal, id]}]];
+        Scan[If[!MemberQ[stateIDs, #], Message[DFA::invinit, #]] &, initial];
+        Scan[If[!MemberQ[stateIDs, #], Message[DFA::invterm, #]] &, terminal];
         DFA[
-          "states" -> KeySort@Association[tostate /@ states],
+          "states" -> KeySort @ Association[tostate /@ states],
           "initial" -> initial,
           "terminal" -> terminal,
           "alphabet" -> alph
@@ -118,24 +116,26 @@ DFA[g_Graph] := DFA[FAExpression[g]];
 DFA /: MakeBoxes[dfa : DFA[asc_?dfaAscQ],
   form : (StandardForm | TraditionalForm)] :=
   makeAutomatonSummaryBoxes[dfa, form];
-DFA /: Graph[dfa_DFA?DFAQ, opts : OptionsPattern[{Graph, automatonGraph}]] :=
-  Annotate[automatonGraph[dfa, opts], "Automaton" -> dfa];
-DFA /: Graph3D[dfa_DFA?DFAQ, opts : OptionsPattern[{Graph3D, Graph, automatonGraph}]] :=
-  Annotate[
-    Graph3D[automatonGraph[dfa, filterOpts[{opts}, {Graph, automatonGraph}, Graph3D]],
-      filterOpts[{opts}, Graph3D],
-      EdgeShapeFunction -> GraphElementData[{"Arrow", "ArrowSize" -> 0.015}]],
-    "Automaton" -> dfa];
+DFA /: Graph[dfa_DFA?DFAQ, opts : OptionsPattern[]] :=
+  FAGraph[dfa, opts];
+DFA /: Graph3D[dfa_DFA?DFAQ, opts : OptionsPattern[]] :=
+  FAGraph3D[dfa, opts];
+
+(*Annotate[
+  Graph3D[toGraph[dfa, filteredOptionSequence[{opts}, {Graph, toGraph}, Graph3D]],
+    filteredOptionSequence[{opts}, Graph3D],
+    EdgeShapeFunction -> GraphElementData[{"Arrow", "ArrowSize" -> 0.015}]],
+  "Automaton" -> dfa];*)
 DFA /: ToRules[dfa_DFA?DFAQ] :=
-  Normal[Normal@*Transitions /@ States@dfa];
+  Normal[Normal@*StateTransitions /@ States @ dfa];
 
 (dfa_DFA?DFAQ)[w_List](* /; validDFAInputQ[dfa, w]*) :=
   With[{Q = States[dfa]},
-    MemberQ[IDs[dfa, "Terminal"],
-      Fold[Q[#1]@#2 &, First@IDs[dfa, "Initial"], w]]];
+    MemberQ[StateNames[dfa, "Terminal"],
+      Fold[Q[#1]@#2 &, First @ StateNames[dfa, "Initial"], w]]];
 (dfa_DFA?DFAQ)[w_List, All](* /; validDFAInputQ[dfa, w]*) :=
   With[{Q = States[dfa]},
-    FoldList[Q[#1]@#2 &, First@IDs[dfa, "Initial"], w]];
+    FoldList[Q[#1]@#2 &, First @ StateNames[dfa, "Initial"], w]];
 (dfa_DFA?DFAQ)[w_List, n_Integer?NonNegative] := dfa[Take[w, n], All];
 (dfa_DFA?DFAQ)[w_List, n_] := Take[dfa[w, All], n];
 (dfa_DFA?DFAQ)[w_String, args___] := dfa[Characters[w], args];
@@ -146,49 +146,54 @@ Options[RandomDFA] = {
   "TerminalStates" -> 0.3,
   "AlphabetFunction" -> Automatic,
   "StatesFunction" -> Automatic,
-  "AllStatesReachable" -> False};
+  "AllStatesReachable" -> False
+};
 RandomDFA[statesin : (_Integer | _List), alphin : (_Integer | _List), OptionsPattern[RandomDFA]] :=
-  With[{
-    n = when[statesin, _Integer, Length@statesin],
-    k = when[alphin, _Integer, Length@alphin]},
-    With[{
-      nterm = intProp[OptionValue["TerminalStates"], n],
-      ids = makeStateIDs[statesin, OptionValue["StatesFunction"]],
-      alph = makeAlphabet[alphin, OptionValue["AlphabetFunction"]]},
+  With[
+    {
+      n = when[_Integer, statesin, Length @ statesin],
+      k = when[_Integer, alphin, Length @ alphin]
+    },
+    With[
+      {
+        nterm = intOrMult[OptionValue["TerminalStates"], n],
+        ids = makeStateIDs[statesin, OptionValue["StatesFunction"]],
+        alph = makeAlphabet[alphin, OptionValue["AlphabetFunction"]]
+      },
       If[OptionValue["AllStatesReachable"],
         If[k == 1,
-          With[{rs = RandomSample@ids ~ Append ~ RandomChoice[ids]},
+          With[{rs = RandomSample @ ids ~ Append ~ RandomChoice[ids]},
             DFA[BlockMap[(First@# -> Rest@#)&, rs, 2, 1],
               alph,
-              {First@rs},
+              {First @ rs},
               RandomSample[ids, UpTo[nterm]]
             ]],
-          With[{asc = GroupBy[prufferDecode@randomPrufferCode[n, k], Last -> First],
-            idxs = AssociationThread[Range[n] -> RandomSample@ids]},
+          With[{asc = GroupBy[prufferDecode @ randomPrufferCode[n, k], Last -> First],
+            idxs = AssociationThread[Range[n] -> RandomSample @ ids]},
             DFA[
               Table[With[{egg = Lookup[asc, i, {}]},
-                i -> RandomSample@Flatten@Join[egg, RandomChoice[;; n, k - Length@egg]]],
+                i -> RandomSample @ Flatten @ Join[egg, RandomChoice[;; n, k - Length @ egg]]],
                 {i, n}] /. idxs,
               alph,
               {idxs[n]},
               RandomSample[ids, UpTo[nterm]]]]],
-        DFA[Thread[ids -> RandomChoice[ids, {Length@ids, Length@alph}]],
+        DFA[Thread[ids -> RandomChoice[ids, {Length @ ids, Length @ alph}]],
           alph,
           RandomSample[ids, 1],
           RandomSample[ids, UpTo[nterm]]]
       ]]];
 
 prufferDecode[code_] := Module[
-  {deg = Lookup[Counts[code] + 1, Range[Length@code + 2], 1]},
-  Append[(deg[[#]]--; #)& /@ {First@FirstPosition[deg, 1], #}& /@ code,
-    Flatten@Position[deg, 1, {1}, 2, Heads -> False]]];
+  {deg = Lookup[Counts[code] + 1, Range[Length @ code + 2], 1]},
+  Append[(deg[[#]]--; #)& /@ {First @ FirstPosition[deg, 1], #}& /@ code,
+    Flatten @ Position[deg, 1, {1}, 2, Heads -> False]]];
 
 randomPrufferCode[n_, k_] := Which[
   n <= 2, {},
   k == 1, RandomSample[;; n, n - 2],
   n - 2 <= k, RandomChoice[;; n, n - 2],
-  True, With[{q = Echo@Quotient[n - 2, k - 1]},
-    RandomSample@Flatten@{
+  True, With[{q = Echo @ Quotient[n - 2, k - 1]},
+    RandomSample @ Flatten@{
       Table[RandomSample[;; n, q], k - 2],
       RandomSample[;; n, q + Mod[n - 2, k - 1]]}
   ]];
@@ -228,29 +233,29 @@ ToDFA[dfa_?DFAQ, OptionsPattern[]?(validQ @ ToDFA)] :=
     ],
     Automatic,
     Switch[OptionValue["StateNames"],
-      "Index", IndexFA@FAExpression@dfa,
+      "Index", IndexFA @ FAExpression @ dfa,
       "Subset", RenameStates[dfa, List]
     ]
   ];
 ToDFA[nfa_?NFAQ, alphabet_List : Automatic, OptionsPattern[]?(validQ @ ToDFA)] :=
   With[{init = EpsilonClosure[nfa],
-    alph = autoAlt[alphabet, LanguageAlphabet[nfa, "IncludeEpsilon" -> False]]},
+    alph = unlessAutomatic[alphabet, LanguageAlphabet[nfa, "IncludeEpsilon" -> False]]},
     Module[{states = States[nfa], i = 1, initfn = MatchQ[init], termfn,
       namefn, convert},
       termfn =
-        sowPredicate[ContainsAny[IDs[nfa, "Terminal"]] -> convert,
+        sowPredicate[ContainsAny[StateNames[nfa, "Terminal"]] -> convert,
           "terminal"];
       namefn =
         Switch[OptionValue["StateNames"],
           "Index", (i++) &,
           "Subset", Identity];
       convert[subset_] := With[
-        {name = (convert[subset] = namefn@subset)},
+        {name = (convert[subset] = namefn @ subset)},
         Sow[name -> DFAState[name,
           AssociationMap[
-            convert@EpsilonClosure[
+            convert @ EpsilonClosure[
               Union @@
-                Transitions[Lookup[states, subset, Nothing], Key[#], {}],
+                StateTransitions[Lookup[states, subset, Nothing], Key[#], {}],
               states] &,
             alph],
           Through[{initfn, termfn}[subset]]],
@@ -269,7 +274,7 @@ ToDFA[nfa_?NFAQ, alphabet_List : Automatic, OptionsPattern[]?(validQ @ ToDFA)] :
         ]
       ]
     ]];
-ToDFA[regex_?REQ, opts: OptionsPattern[]?(validQ @ ToDFA)] := ToDFA[ToNFA[regex], opts];
+ToDFA[regex_?REQ, opts : OptionsPattern[]?(validQ @ ToDFA)] := ToDFA[ToNFA[regex], opts];
 
 PackageExport["MinimizeDFA"]
 Options[MinimizeDFA] = {"StateNames" -> "Indexed"};
@@ -283,12 +288,12 @@ Options:
   - \"SubsetUnion\": Like \"Subset\", but state ids are the unions of elements of subsets instead of the subsets themselves.
     - Useful when the state ids of the original automaton are themselves lists.";
 OptionChecks[MinimizeDFA] = { "StateNames" -> "Index" | "Subset" | "SubsetUnion" };
-MinimizeDFA[dfa_?DFAQ, OptionsPattern[MinimizeDFA]?(validQ@MinimizeDFA)] :=
+MinimizeDFA[dfa_?DFAQ, OptionsPattern[MinimizeDFA]?(validQ @ MinimizeDFA)] :=
   With[{rdfa = DeleteUnreachableStates[dfa]},
     Module[{newid, newinit, i = 2},
-      With[{classes = StatesPartition@rdfa,
-        initQ = MemberQ[First@IDs[rdfa, "Initial"]],
-        terminals = IDs[rdfa, "Terminal"]},
+      With[{classes = StatesPartition @ rdfa,
+        initQ = MemberQ[First @ StateNames[rdfa, "Initial"]],
+        terminals = StateNames[rdfa, "Terminal"]},
         Scan[
           Switch[OptionValue["StateNames"],
             "Indexed", (newid[toAlternatives@#] =
@@ -302,8 +307,8 @@ MinimizeDFA[dfa_?DFAQ, OptionsPattern[MinimizeDFA]?(validQ@MinimizeDFA)] :=
         DFA[
           "states" -> Association @@ Map[
             updateStateRule[#, newid,
-              {newid@StateID@# === newinit, TerminalQ@#}] &,
-            Lookup[States@rdfa, classes[[All, 1]]]],
+              {newid @ StateName@# === newinit, TerminalStateQ@#}] &,
+            Lookup[States @ rdfa, classes[[All, 1]]]],
           "initial" -> {newinit},
           "terminal" -> Union[newid /@ terminals],
           "alphabet" -> LanguageAlphabet[rdfa]
@@ -325,7 +330,7 @@ PackageScope["productDFA"]
 productDFA::usage = "productDFA[A1, A2, ..., init, predicate] returns the product DFA with initial state init and terminal states selected by predicate";
 productDFA[automata__, init_, termpred_] :=
   Module[{states, terms},
-    {states, terms} = Reap[productStates[automata, sowPredicate[termpred -> StateID, "terminal"]], "terminal"];
+    {states, terms} = Reap[productStates[automata, sowPredicate[termpred -> StateName, "terminal"]], "terminal"];
     DFA["states" -> states,
       "initial" -> init,
       "terminal" -> First[terms, {}],
@@ -335,20 +340,20 @@ PackageScope["scanProductDFA"]
 scanProductDFA::usage = "scanProductDFA[f, A1, A2] applies f to the id of each reachable state in product DFA of A1 and A2, without explicitly constructing it.";
 scanProductDFA[f_, dfa1_?DFAQ, dfa2_?DFAQ] := With[
   {queue = CreateDataStructure[
-    "Queue", {Catenate@IDs[{dfa1, dfa2}, "Initial"]}],
-    statesAscs = States[{dfa1, dfa2}],
+    "Queue", {Catenate @ StateNames[{dfa1, dfa2}, "Initial"]}],
+    statesAscs = Thread @ States[{dfa1, dfa2}],
     alph = If[! SameAlphabetQ[dfa1, dfa2], Return[False], LanguageAlphabet[dfa1]]},
   Module[{enqueue},
     enqueue[tuple_] := (queue["Push", tuple]; enqueue[tuple] = Null);
     While[! queue["EmptyQ"],
       With[{tup = MapThread[Construct,
         {statesAscs, aside[f, queue["Pop"]]}]},
-        Scan[enqueue[Transitions[tup, #]] &, alph]]]]
+        Scan[enqueue[StateTransitions[tup, #]] &, alph]]]]
 ];
 scanProductDFA[f_, nfa1_?NFAQ, nfa2_?NFAQ] := With[
   {queue = CreateDataStructure["Queue", {EpsilonClosure /@ {nfa1, nfa2}}],
-    statesAscs = States[{nfa1, nfa2}],
-    alph = DeleteCases[LanguageAlphabet /@ Unevaluated@Union[nfa1, nfa2], Epsilon]},
+    statesAscs = Thread @ States[{nfa1, nfa2}],
+    alph = DeleteCases[LanguageAlphabet /@ Unevaluated @ Union[nfa1, nfa2], Epsilon]},
   Module[{enqueue},
     enqueue[tuple_] := (queue["Push", tuple]; enqueue[tuple] = Null);
     While[! queue["EmptyQ"],
@@ -366,37 +371,39 @@ scanProductDFA[f_, A1_?FAQ, A2_?FAQ] := scanProductDFA[f, NFA[A1], NFA[A2]];
 validDFAInputQ[dfa_, w_] := ContainsOnly[w, LanguageAlphabet[dfa]] ||
   With[{badsyms = Complement[w, LanguageAlphabet[dfa]]},
     Switch[Length[badsyms],
-      1, Message[DFA::invsym, dfa, First@badsyms],
+      1, Message[DFA::invsym, dfa, First @ badsyms],
       _, Message[DFA::invsyms, dfa, badsyms]]; False];
 
+PackageScope["validDFAInitQ"]
+validDFAInitQ::usage = "validDFAInitQ[x] returns True if x is a list with exactly one item.";
 validDFAInitQ[{_}] = True;
-validDFAInitQ[x_] := (Message[DFA::badinit, x]; False);
+validDFAInitQ[_] = False;
 
 productStates[dfas : Repeated[_?DFAQ, {2, Infinity}], terminalPredicate_] :=
-  With[{queue = CreateDataStructure["Queue", {Catenate@IDs[{dfas}, "Initial"]}],
-    statesAscs = States[{dfas}],
-    alph = LanguageAlphabet /@ Unevaluated@Intersection[dfas],
+  With[{queue = CreateDataStructure["Queue", {Catenate @ StateNames[{dfas}, "Initial"]}],
+    statesAscs = Thread @ States[{dfas}],
+    alph = LanguageAlphabet /@ Unevaluated @ Intersection[dfas],
     statesTag = CreateUUID["NewStates"]},
     Module[{next, tup, enqueue},
       enqueue[tuple_] := (queue["Push", tuple]; enqueue[tuple] = tuple);
-      Association@First[
-        Last@Reap[
+      Association @ First[
+        Last @ Reap[
           While[! queue["EmptyQ"],
             tup = MapThread[Construct, {statesAscs, next = queue["Pop"]}];
             Sow[next -> DFAState[next,
-              AssociationMap[enqueue[Transitions[tup, #]] &, alph],
-              {AllTrue[tup, InitialQ], terminalPredicate[tup]}],
+              AssociationMap[enqueue[StateTransitions[tup, #]] &, alph],
+              {AllTrue[tup, InitialStateQ], terminalPredicate[tup]}],
               statesTag]],
           statesTag], {}]]];
 productStates[nfas : Repeated[_?NFAQ, {2, Infinity}], terminalPredicate_] :=
   With[{queue = CreateDataStructure["Queue", {EpsilonClosure /@ {nfas}}],
-    statesAscs = States[{nfas}],
-    alph = DeleteCases[LanguageAlphabet /@ Unevaluated@Union[nfas], Epsilon],
+    statesAscs = Thread @ States[{nfas}],
+    alph = DeleteCases[LanguageAlphabet /@ Unevaluated @ Union[nfas], Epsilon],
     statesTag = CreateUUID["NewStates"]},
     Module[{next, tup, enqueue},
       enqueue[tuple_] := (queue["Push", tuple]; enqueue[tuple] = tuple);
-      Association@First[
-        Last@Reap[
+      Association @ First[
+        Last @ Reap[
           While[! queue["EmptyQ"],
             tup = MapThread[Lookup, {statesAscs, next = queue["Pop"]}];
             Sow[next -> DFAState[next,
@@ -405,8 +412,8 @@ productStates[nfas : Repeated[_?NFAQ, {2, Infinity}], terminalPredicate_] :=
                   {OperatorApplied[Lookup, {3, 1, 2}][#, {}]
                     /@ (mergeTransitions /@ tup),
                     statesAscs}]] &, alph],
-              {AllTrue[tup, AnyTrue[InitialQ]],
-                Length@tup > 0 && terminalPredicate[tup]}],
+              {AllTrue[tup, AnyTrue[InitialStateQ]],
+                Length @ tup > 0 && terminalPredicate[tup]}],
               statesTag]], statesTag], {}]]];
 productStates[As : Repeated[_?FAQ, {2, Infinity}], terminalPredicate_] :=
   productStates[Sequence @@ (NFA /@ {As}), terminalPredicate];

@@ -1,8 +1,8 @@
 (* Wolfram Language Package *)
 (* Created by the Wolfram Language Plugin for IntelliJ, see http://wlplugin.halirutan.de/ *)
 
-(* :Title: Regex *)
-(* :Context: Regex` *)
+(* :Title: RegularExpressions *)
+(* :Context: RegularExpressions` *)
 (* :Author: Adam Smith *)
 (* :Date: 2020-05-19 *)
 
@@ -15,21 +15,22 @@
 Package["RegularLanguages`"]
 
 (* ::Section:: *)
-(* Regex *)
+(* RE *)
 
-PackageExport["Regex"]
-Regex::usage = "Regex[x] represents the regular expression whose language is exactly {x}.
-Used to indicate a literal outside a compound RE.";
+PackageExport["RE"]
+RE::usage = "RE[x$] represents the regular expression matching the literal x$. Used to indicate a literal outside a compound RE.";
+RE[Epsilon] = Epsilon;
+RE[EmptyLanguage] = EmptyLanguage;
 
 (* ::Section:: *)
 (* Properties *)
 
 PackageExport["REQ"]
-REQ::usage = "REQ[expr] yields True when expr has head Regex, or satisfies CompoundREQ.
-REQ[expr, patt] gives True if expr is EmptyLanguage or Epsilon, or of the form Regex[x] where x matches patt, or is a compound regex where every subexpression at level -1 that is not EmptyLanguage or Epsilon matches patt.";
-REQ[r : (EmptyLanguage | Epsilon | _Regex | _?CompoundREQ)] = True;
+REQ::usage = "REQ[expr] yields True when expr has head RE, or satisfies CompoundREQ.
+REQ[expr, patt] gives True if expr is EmptyLanguage or Epsilon, or of the form RE[x] where x matches patt, or is a compound regex where every subexpression at level -1 that is not EmptyLanguage or Epsilon matches patt.";
+REQ[r : (EmptyLanguage | Epsilon | _RE | _?CompoundREQ)] = True;
 REQ[_] = False;
-REQ[r_, patt_] := (MatchQ[r, _Regex] && MatchQ[First@r, patt]) || CompoundREQ[r, patt];
+REQ[r_, patt_] := (MatchQ[r, _RE] && MatchQ[First @ r, patt]) || CompoundREQ[r, patt];
 
 PackageExport["CompoundREQ"]
 CompoundREQ::usage = "\
@@ -44,8 +45,8 @@ PackageExport["REMatchQ"]
 REMatchQ::usage = "\
 REMatchQ[expr, regex] returns True if expr is matched by regex.
 REMatchQ[regex] represents an operator form of REMatchQ.";
-REMatchQ[Epsilon, r_] := matchesEmptyQ[r];
-REMatchQ[input_String, r_ /; CompoundREQ[r, _String]] := StringMatchQ[input, RegularExpression[ToREString[r]]];
+REMatchQ[Epsilon, r_] := matchesEmptyQ @ r;
+REMatchQ[input_String, r_ /; CompoundREQ[r, _String]] := StringMatchQ[input, RegularExpression[ToREString @ r]];
 REMatchQ[_, r_ /; CompoundREQ[r, _String]] = False;
 REMatchQ[input_, r_] := ToNFA[r][input];
 REMatchQ[r_][input_] := REMatchQ[input, r];
@@ -53,7 +54,7 @@ REMatchQ[r_][input_] := REMatchQ[input, r];
 PackageExport["RENormal"]
 RENormal::usage = "RENormal[regex] converts the regex into an expression with head RegularExpression recognizing strings from the same language.";
 RENormal[EmptyLanguage] = RegularExpression["a^"];
-RENormal[r_] := RegularExpression@ToString@Map[
+RENormal[r_] := RegularExpression @ ToString @ Map[
   RightComposition[ToString,
     StringReplace[a : Characters[".$^?*+|{}()[]\\"] :> "\\" ~~ a],
     StringReplace[{s : (StartOfString ~~ _ | ("\\" ~~ _) ~~ EndOfString) :> s, s__ :> "(" ~~ s ~~ ")"}]],
@@ -75,11 +76,16 @@ RELength[r_] := Module[{i = 0}, r /. reExcludingPatt[EmptyLanguage, Epsilon] :> 
 (* Union *)
 
 PackageExport["REUnion"]
-REUnion::usage = "REUnion[e1, e2, ...] represents a regex matching the union e1 | e2 | ... of the expressions ei.";
+REUnion::usage = "\
+REUnion[e$1, e$2, $$] represents a regular expression for the union of expressions e$i.
+* Matches the language L$:40e$1) \[Union] L$:40e$2) \[Union] $$, where L$:40e$i) denotes the language of e$i.
+Formatted as e$1 \[VerticalSeparator] e$2 \[VerticalSeparator] $$, and aliased by VerticalSeparator when extended notation is enabled.
+* Use \\[VerticalSeparator] operator (alias \[AliasIndicator]|\[AliasIndicator]) for infix input.
+* See LoadNotation for more details.";
 Default[REUnion] = EmptyLanguage;
 REUnion[x_.] := x;
 SetAttributes[REUnion, Orderless];
-u : REUnion[x_, x_, ___] := Union[Unevaluated@u];
+u : REUnion[x_, x_, ___] := Union[Unevaluated @ u];
 REUnion[Epsilon, c_REClosure , a___] := REUnion[c, a];
 SetAttributes[REUnion, {OneIdentity, Flat}];
 REUnion[EmptyLanguage, a_] := a;
@@ -91,12 +97,17 @@ REUnion /: ToString[u_REUnion] :=
 (* Concatenation *)
 
 PackageExport["REConcat"]
-REConcat::usage = "REConcat[e1, e2, ...] represents a regex matching the concatenation e1 e2 ... of the expressions ei.";
+REConcat::usage = "\
+REConcat[e$1, e$2, $$] represents a regular expression for the concatenation of expressions e$i.
+* Matches the language L$:40e$1)L$:40e$2)$$, where L$:40e$i) denotes the language of e$i.
+Formatted as e$1 \[CenterDot] e$2 \[CenterDot] e$3 \[CenterDot] $$, and aliased by CenterDot when extended notation is enabled.
+* Use \\[CenterDot] operator (alias \[AliasIndicator].\[AliasIndicator]) for infix input.
+* See LoadNotation for more details.";
 Default[REConcat] = Epsilon;
 REConcat[___, EmptyLanguage, ___] = EmptyLanguage;
 REConcat[x_] := x;
 REConcat[] = EmptyLanguage;
-c : REConcat[___, Epsilon, ___] := DeleteCases[Unevaluated@c, Epsilon];
+c : REConcat[___, Epsilon, ___] := DeleteCases[Unevaluated @ c, Epsilon];
 SetAttributes[REConcat, {Flat, OneIdentity}];
 REConcat /: ToString[c_REConcat] := StringRiffle[ToString /@ (List @@ c), ""];
 
@@ -104,10 +115,15 @@ REConcat /: ToString[c_REConcat] := StringRiffle[ToString /@ (List @@ c), ""];
 (* Closure *)
 
 PackageExport["REClosure"]
-REClosure::usage = "REClosure[e] represents a regex matching the closure of expression e with respect to concatenation. This is defined as the set {Epsilon, e, ee, eee, ...}.";
+REClosure::usage = "\
+REClosure[e$] represents a regular expression for closure of expression e$ with respect to concatenation.
+* Matches the language {\[CurlyEpsilon]} \[Union] L$:40e$) \[Union] L$:40e$)L$:40e$) \[Union] $$, where L$:40e$) denotes the language of e$.
+Formatted as \!\(e$ \^ *\), and aliased by SuperStar when extended notation is enabled.
+* Use shortcut Ctrl+^, * for postfix input.
+* See LoadNotation for more details.";
 REClosure[EmptyLanguage | Epsilon] = Epsilon;
 REClosure[REClosure[x_]] := REClosure[x];
-(*REClosure /: MakeBoxes[REClosure[x_], form : (StandardForm | TraditionalForm)] := MakeBoxes[SuperStar@x, form];*)
+(*REClosure /: MakeBoxes[REClosure[x_], form : (StandardForm | TraditionalForm)] := MakeBoxes[SuperStar @ x, form];*)
 REClosure /: ToString[REClosure[c_REConcat]] := "(" <> ToString[c] <> ")*";
 REClosure /: ToString[c_REClosure] := ToString @@ c <> "*";
 REClosure[_, x__] /; Message[REClosure::argx, REClosure, Length[{x}] + 1] = Null;
@@ -116,9 +132,12 @@ SyntaxInformation[REClosure] = {"ArgumentsPattern" -> {_}};
 (* ::Section:: *)
 (* Transformation *)
 
-PackageExport["RESymbolIndex"]
-RESymbolIndex::usage = "RESymbolIndex[r, i] is a symbolic wrapper representing the i-th occurrence of the symbol r in a linearized regex.";
-RESymbolIndex /: MakeBoxes[RESymbolIndex[x_, i_], StandardForm] := ToBoxes[Subscript[x, i]];
+PackageExport["REIndexed"]
+REIndexed::usage = "REIndexed[x$, i$] is a symbolic wrapper representing the i-th occurrence of the symbol x$ \
+in a linearized regular expression.";
+REIndexed /: MakeBoxes[re : REIndexed[x_, i_], form : (StandardForm | TraditionalForm)] :=
+  With[{boxes = MakeBoxes[Subscript[x, i], form]},
+    InterpretationBox[boxes, re]];
 
 PackageExport["LinearizeRE"]
 LinearizeRE::usage = "LinearizeRE[regex] linearizes regex by indexing each character occurrence.
@@ -127,22 +146,22 @@ LinearizeRE[regex, i, True] returns a list {r', {a1, a2, ...}} where r' is the l
 LinearizeRE[r_, starti_Integer : 1, returnAlphabet_ : False] := Module[
   {i = starti},
   If[returnAlphabet,
-    Reap[r /. p : reExcludingPatt[Epsilon] :> Sow[RESymbolIndex[p, i++], "newalph"], "newalph", Sequence @@ ##2 &],
-    r /. p : reExcludingPatt[Epsilon] :> RESymbolIndex[p, i++]]
+    Reap[r /. p : reExcludingPatt[Epsilon] :> Sow[REIndexed[p, i++], "newalph"], "newalph", Sequence @@ ##2 &],
+    r /. p : reExcludingPatt[Epsilon] :> REIndexed[p, i++]]
 ];
 
 PackageExport["SimplifyRE"]
 SimplifyRE::usage = "SimplifyRE[r] attempts to simplify the provided regular expression using simple pattern matching.";
 SimplifyRE[r_, opts : OptionsPattern[ReplaceRepeated]] :=
   ReplaceRepeated[r, $RESimplificationRules,
-    filterOpts[{opts}, ReplaceRepeated]];
+    filteredOptionSequence[{opts}, ReplaceRepeated]];
 
 PackageExport["FactorRE"]
 FactorRE::usage = "FactorRE[r] attempts to factor the given regular expression.";
 FactorRE[r_, opts : OptionsPattern[ReplaceRepeated]] :=
   ReplaceRepeated[r,
     $REFactorizationRules,
-    filterOpts[{opts}, ReplaceRepeated]];
+    filteredOptionSequence[{opts}, ReplaceRepeated]];
 
 PackageExport["AdvancedSimplifyRE"]
 AdvancedSimplifyRE::usage = "AdvancedSimplifyRE[r] applies additional techniques of factorization and regular language equivalence to simplify the given regular expression.";
@@ -153,7 +172,7 @@ AdvancedSimplifyRE[r_, opts : OptionsPattern[{AdvancedSimplifyRE, ReplaceRepeate
     $REAdvancedSimplificationRules,
     If[TrueQ[OptionValue["Factorize"]],
       $REFactorizationRules, Nothing]}],
-    filterOpts[{opts}, ReplaceRepeated]];
+    filteredOptionSequence[{opts}, ReplaceRepeated]];
 
 PackageExport["ExpandRE"]
 ExpandRE::usage = "ExpandRE[r] expands the given regular expression by distributing REConcat over REUnion.";
@@ -177,7 +196,7 @@ Options[RandomRE] = {
   "EpsilonProbability" -> 0
 };
 RandomRE[n_Integer, alphin : (_List | _Integer), p : _?NumericQ : 0.5, OptionsPattern[]] :=
-  With[{k = when[alphin, _Integer, Length@alphin],
+  With[{k = when[_Integer, alphin, Length @ alphin],
     c1 = N[{1 - p, p}] -> {True, False},
     c2 = N[{#, 1 - #}&@OptionValue["ClosureProbability"]] -> {REClosure, Identity},
     c3 = N[{#, 1 - #}&@OptionValue["UnionProbability"]] -> {REUnion, REConcat},
@@ -227,7 +246,7 @@ ParseRE[string_String, OptionsPattern[]?(validQ @ ParseRE)] :=
   With[{
     w = CreateDataStructure["Queue", Characters[string]]["Push", EndOfString],
     expr = With[{o = applyIf[OptionValue["FullParseTree"],
-      Map@Inactive, <|"|" -> REUnion, "." -> REConcat, "*" -> REClosure|>]},
+      Map @ Inactive, <|"|" -> REUnion, "." -> REConcat, "*" -> REClosure|>]},
       o[#1][##2] &],
     binaryQ = MatchQ["|"],
     postfixQ = MatchQ["*"],
@@ -266,13 +285,13 @@ ParseRE[string_String, OptionsPattern[]?(validQ @ ParseRE)] :=
           {r, nxt} = {nprec[s], w["Peek"]}];
         t];
       (*Algorithm start*)
-      Catch@expectAfter[A[0], EndOfString]]];
+      Catch @ expectAfter[A[0], EndOfString]]];
 
 PackageExport["ToRE"]
 ToRE::usage = "ToRE[A] converts the automaton A to an equivalent regular expression.";
 Options[ToRE] = {Method -> Automatic};
 ToRE[A_?FAQ, opts : OptionsPattern[reduceREArray]] :=
-  reduceREArray[toRegexArray[A], filterOpts[{opts}, reduceREArray]];
+  reduceREArray[toRegexArray[A], filteredOptionSequence[{opts}, reduceREArray]];
 ToRE[r_, OptionsPattern[reduceREArray]] := r;
 
 (* ::Section:: *)
@@ -280,7 +299,7 @@ ToRE[r_, OptionsPattern[reduceREArray]] := r;
 
 PackageScope["pSet"]
 pSet::usage = "pSet[regex] returns the set of prefix characters of strings recognized by regex.";
-pSet[EmptyLanguage | Epsilon | RESymbolIndex[Epsilon, _] | PatternSequence[]] = {};
+pSet[EmptyLanguage | Epsilon | REIndexed[Epsilon, _] | PatternSequence[]] = {};
 pSet[HoldPattern[REUnion[x__]]] := Catenate[pSet /@ {x}];
 pSet[HoldPattern[REClosure[x_]]] := pSet[x];
 pSet[HoldPattern[REConcat[
@@ -291,7 +310,7 @@ pSet[x_] := {x};
 
 PackageScope["dSet"]
 dSet::usage = "dSet[regex] returns the set of suffix characters of strings recognized by regex.";
-dSet[EmptyLanguage | Epsilon | RESymbolIndex[Epsilon, _] | PatternSequence[]] = {};
+dSet[EmptyLanguage | Epsilon | REIndexed[Epsilon, _] | PatternSequence[]] = {};
 dSet[HoldPattern[REUnion[x__]]] := Catenate[dSet /@ {x}];
 dSet[HoldPattern[REClosure[x_]]] := dSet[x];
 dSet[HoldPattern[REConcat[
@@ -308,8 +327,8 @@ fSet[HoldPattern[REConcat[x_, y_]]] := Catenate[{fSet[x], fSet[y], Tuples[{dSet[
 fSet[_] = {};
 
 PackageScope["reExcludingPatt"]
-reExcludingPatt::usage = "reExcludingPatt[stuff...] is equivalent to Except[_REUnion | _REClosure | _REConcat | _Regex | REUnion | REClosure | REConcat | Regex | stuff...]";
-reExcludingPatt[stuff___] := Except@Alternatives[_REUnion, _REClosure, _REConcat, _Regex, REUnion, REClosure, REConcat, Regex, stuff];
+reExcludingPatt::usage = "reExcludingPatt[stuff...] is equivalent to Except[_REUnion | _REClosure | _REConcat | _RE | REUnion | REClosure | REConcat | RE | stuff...]";
+reExcludingPatt[stuff___] := Except @ Alternatives[_REUnion, _REClosure, _REConcat, _RE, REUnion, REClosure, REConcat, RE, stuff];
 
 
 (* ::Section:: *)
@@ -320,31 +339,31 @@ reExcludingPatt[stuff___] := Except@Alternatives[_REUnion, _REClosure, _REConcat
 
 toRegexArray[A_?FAQ] := With[{
   states = States[A],
-  inits = IDs[A, "Initial"],
-  terms = IDs[A, "Terminal"],
+  inits = StateNames[A, "Initial"],
+  terms = StateNames[A, "Terminal"],
   alphidx = PositionIndex[LanguageAlphabet[A, "IncludeEpsilon" -> False]][[All, 1]],
   swap = Function[Null, {#1, #2} = {#2, #1}, HoldAll]},
   With[{
-    addnewinit = Length@inits != 1,
-    addnewterm = Length@terms != 1 || inits === terms}, (*init and term index must be distinct*)
+    addnewinit = Length @ inits != 1,
+    addnewterm = Length @ terms != 1 || inits === terms}, (*init and term index must be distinct*)
     Module[{getidx,
-      idxs = IDs[A, "Index"] + Boole[addnewinit],
+      idxs = StateNames[A, "Index"] + Boole[addnewinit],
       n = StateCount[A] + Boole[addnewinit] + Boole[addnewterm]},
       If[! addnewterm, (*If we're not adding a new terminal state*)
-        swap[idxs[First@terms], idxs[[-1]]]]; (*Make the index of the old terminal state n*)
+        swap[idxs[First @ terms], idxs[[-1]]]]; (*Make the index of the old terminal state n*)
       If[! addnewinit, (*If we're not adding a new initial state*)
         If[idxs[[1]] == 1, (*True unless idx[[1]] got swapped with idx[[-1]] in previous step*)
-          swap[idxs[First@inits], idxs[[1]]], (*Make the index of the old initial state 1*)
-          swap[idxs[First@inits], idxs[[-1]]]]];(*Make the index of the old initial state idxs[[-1]]=1*)
+          swap[idxs[First @ inits], idxs[[1]]], (*Make the index of the old initial state 1*)
+          swap[idxs[First @ inits], idxs[[-1]]]]];(*Make the index of the old initial state idxs[[-1]]=1*)
 
       ReleaseHold[
         Hold[getidx[id_] :=
           With[{idx = (getidx[id] = idxs[id])},
             Function[
-              If[InitialQ[#], Sow[Epsilon, {{1, idx}}]];
-              If[TerminalQ[#], Sow[Epsilon, {{idx, n}}]];
-              KeyValueMap[ Sow[Lookup[alphidx, Key[#1], #], \[FormalF][idx, #2]] &, Transitions[#]]
-            ]@states@id;
+              If[InitialStateQ[#], Sow[Epsilon, {{1, idx}}]];
+              If[TerminalStateQ[#], Sow[Epsilon, {{idx, n}}]];
+              KeyValueMap[ Sow[Lookup[alphidx, Key[#1], #], \[FormalF][idx, #2]] &, StateTransitions[#]]
+            ]@states @ id;
             idx]
         ] /. {
           \[FormalF][a_, b_] /; FAType[A] === NFA :> ({a, getidx[#]} & /@ b),
@@ -353,10 +372,10 @@ toRegexArray[A_?FAQ] := With[{
 
       {
         SparseArray[DeleteCases[ (*Delete any \[CurlyEpsilon] self-transitions*)
-          Last@Reap[Scan[getidx, inits], _, Rule[#1, REUnion @@ #2] &],
+          Last @ Reap[Scan[getidx, inits], _, Rule[#1, REUnion @@ #2] &],
           HoldPattern[{x_, x_} -> Epsilon]],
           n, EmptyLanguage],
-        Association[Reverse[Normal@alphidx, 2]]
+        Association[Reverse[Normal @ alphidx, 2]]
       }]]];
 
 Options[reduceREArray] = { Method -> Automatic, "SimplificationFunction" -> Automatic };
@@ -366,21 +385,21 @@ reduceREArray[{array_?SquareMatrixQ, alphabet_}, OptionsPattern[]] := Module[{
   arr = array,
   simp = unless[OptionValue["SimplificationFunction"], Automatic, SimplifyRE, None, Identity]},
   With[{
-    idxs = Range[2, Length@arr - 1],
+    idxs = Range[2, Length @ arr - 1],
     reduce = regexArrayEliminate[arr, simp],
     method = validatedMethod[OptionValue[Method],
       {Automatic, "Shortest", "LeastCommon", "MostCommon", "ForwardOrder",
         "ReverseOrder", "RandomOrder", "SpecificOrder"}, reduceREArray] },
     Switch[method,
       "ForwardOrder", Scan[reduce, idxs],
-      "ReverseOrder", Scan[reduce, Reverse@idxs],
+      "ReverseOrder", Scan[reduce, Reverse @ idxs],
       "RandomOrder", Scan[reduce, RandomSample[idxs]],
       "SpecificOrder",
       With[{perm = Last[OptionValue[Method], Message[reduceREArray::badorder, idxs]; idxs]},
-        If[Sort@perm =!= idxs,
+        If[Sort @ perm =!= idxs,
           Message[reduceREArray::badorder, idxs]; Scan[reduce, idxs],
           Scan[reduce, perm]]],
-      _, With[{next = nextEliminationFunction[arr, method, Break[]]}, While[True, reduce@next[]]]];
+      _, With[{next = nextEliminationFunction[arr, method, Break[]]}, While[True, reduce @ next[]]]];
     reduce[0] /. alphabet]
 ];
 
@@ -392,16 +411,16 @@ matchesEmptyQ[_] = False;
 uwExpr[uw_, uv_, vv_, vw_] := REUnion[uw, REConcat[uv, REClosure[vv], vw]];
 SetAttributes[regexArrayEliminate, HoldFirst];
 regexArrayEliminate[arr_, simp_][0] := (* recover final expression from reduced array *)
-  simp@REConcat[
-    REClosure@simp@uwExpr[arr[[1, 1]], arr[[1, -1]], arr[[-1, -1]], arr[[-1, 1]]],
+  simp @ REConcat[
+    REClosure @ simp @ uwExpr[arr[[1, 1]], arr[[1, -1]], arr[[-1, -1]], arr[[-1, 1]]],
     arr[[1, -1]],
-    REClosure@simp@uwExpr[arr[[-1, -1]], arr[[-1, 1]], arr[[1, 1]], arr[[1, -1]]]];
+    REClosure @ simp @ uwExpr[arr[[-1, -1]], arr[[-1, 1]], arr[[1, 1]], arr[[1, -1]]]];
 regexArrayEliminate[arr_, simp_][v_] := With[
   {vv = arr[[v, v]]},
   arr[[v, v]] = EmptyLanguage;
-  Outer[(arr[[##]] = simp@uwExpr[arr[[##]], arr[[#1, v]], vv, arr[[v, #2]]]) &,
-    Flatten@arr[[All, v]]["NonzeroPositions"],
-    Flatten@arr[[v]]["NonzeroPositions"]];
+  Outer[(arr[[##]] = simp @ uwExpr[arr[[##]], arr[[#1, v]], vv, arr[[v, #2]]]) &,
+    Flatten @ arr[[All, v]]["NonzeroPositions"],
+    Flatten @ arr[[v]]["NonzeroPositions"]];
   arr[[v, All]] = arr[[All, v]] = EmptyLanguage;
 ];
 
@@ -415,7 +434,7 @@ nextEliminationFunction[arr_, method_, default_] := With[
     Module[{groups = CreateDataStructure["Queue",
       Switch[method,
         Automatic, findEliminationGroups[arr],
-        _, {Range[2, Length@arr - 1]}]],
+        _, {Range[2, Length @ arr - 1]}]],
       indices = {}},
       (If[Length[indices] == 0 && ! groups["EmptyQ"],
         indices = groups["Pop"]];
@@ -424,7 +443,7 @@ nextEliminationFunction[arr_, method_, default_] := With[
 ];
 
 findEliminationGroups[arr_SparseArray, s_ : 1, t_ : Automatic, subset_ : All] :=
-  findEliminationGroups[arr, s, autoAlt[t, Length@arr], unless[subset, All, rangeOver@arr]];
+  findEliminationGroups[arr, s, unlessAutomatic[t, Length @ arr], unless[subset, All, rangeOver @ arr]];
 findEliminationGroups[arr_SparseArray, s_, t_, subset_] := Module[
   {div, lvl},
   lvl[l_][x_] := (lvl[_][x] = l);
@@ -433,7 +452,7 @@ findEliminationGroups[arr_SparseArray, s_, t_, subset_] := Module[
   div[l_][ss : {u_, v__, w_}] := (
     Scan[lvl[l], {u, w}];
     With[{bridges = bridgeStates[arr, u, w, ss]},
-      Switch[Length@bridges,
+      Switch[Length @ bridges,
         Length@{v}, Scan[lvl[l + 1], {v}],
         _?Positive,
         BlockMap[ (* For each pair of sequential bridge states *)
@@ -450,16 +469,16 @@ findEliminationGroups[arr_SparseArray, s_, t_, subset_] := Module[
 ];
 
 bridgeStates[arr_SparseArray, s_ : 1, t_ : Automatic, subset_ : All] :=
-  bridgeStates[arr, s, autoAlt[t, Length@arr], subset];
+  bridgeStates[arr, s, unlessAutomatic[t, Length @ arr], subset];
 bridgeStates[arr_SparseArray, s_, t_, subset_] := With[{
   adjlists = adjacencyIntersection[arr, subset],
   path = findPath[arr, s, t, subset],
-  anc = CreateDataStructure["FixedArray", Length@arr],
-  min = CreateDataStructure["FixedArray", Length@arr],
-  max = CreateDataStructure["FixedArray", Length@arr]},
-  If[Length@path == 0, {}, (* s and t disconnected *)
+  anc = CreateDataStructure["FixedArray", Length @ arr],
+  min = CreateDataStructure["FixedArray", Length @ arr],
+  max = CreateDataStructure["FixedArray", Length @ arr]},
+  If[Length @ path == 0, {}, (* s and t disconnected *)
     Module[{dfs, onPath, setMinMax, notbridges},
-      onPath[toAlternatives@path] = True; onPath[_] = False;
+      onPath[toAlternatives @ path] = True; onPath[_] = False;
 
       notbridges = Function[{v},
         Flatten[Range @@@ {
@@ -471,13 +490,13 @@ bridgeStates[arr_SparseArray, s_, t_, subset_] := With[{
       setMinMax[v_, succVals_] :=
         MapThread[(#1["Part", v] =
           First[#2[#3, UpTo[1]], anc["Part", v]]) &,
-          {{min, max}, {TakeSmallest, TakeLargest}, Transpose@succVals}];
+          {{min, max}, {TakeSmallest, TakeLargest}, Transpose @ succVals}];
 
       dfs[prev_ : 0][v_] := (dfs[_][v] = Null;
       With[{succs = adjlists[[v]],
-        p = First[If[onPath@v, FirstPosition[path, v]], 0]},
+        p = First[If[onPath @ v, FirstPosition[path, v]], 0]},
         Scan[dfs[anc["Part", v] = Max[p, prev]],
-          If[0 < p < Length@path,
+          If[0 < p < Length @ path,
             rotateToFront[succs, path[[p + 1]]],
             succs]];
         setMinMax[v,
@@ -487,11 +506,11 @@ bridgeStates[arr_SparseArray, s_, t_, subset_] := With[{
             /@ succs]]);
 
       dfs[]@s;
-      Delete[path, Transpose@List@Flatten@{1, -1, notbridges@path}]]]
+      Delete[path, Transpose @ List @ Flatten@{1, -1, notbridges @ path}]]]
 ];
 
 horizontalChop[arr_SparseArray, s_ : 1, t_ : Automatic, subset_ : All] :=
-  horizontalChop[arr, s, autoAlt[t, Length@arr], subset];
+  horizontalChop[arr, s, unlessAutomatic[t, Length @ arr], subset];
 horizontalChop[arr_SparseArray, s_, t_, subset_] := With[
   {groups = CreateDataStructure["DisjointSet"],
     adjlists = adjacencyIntersection[arr, subset]},
@@ -512,12 +531,12 @@ adjacencyIntersection[arr_SparseArray, subset_] :=
     Intersection[subset, #] & /@ arr["AdjacencyLists"]];
 
 arrangeFirstLast[l_List, first_, last_] :=
-  {first, Splice@DeleteDuplicates[l, first | last], last};
+  {first, Splice @ DeleteDuplicates[l, first | last], last};
 arrangeFirstLast[expr_, first_, last_] :=
   expr /. h_[ p : OrderlessPatternSequence[Except[first | last] ...]] :> h[first, p, last];
 
 findPath[arr_SparseArray, s_ : 1, t_ : Automatic, subset_ : All] :=
-  findPath[arr, s, autoAlt[t, Length@arr], subset];
+  findPath[arr, s, unlessAutomatic[t, Length @ arr], subset];
 findPath[arr_SparseArray, s_, t_, subset_] := With[
   {neighbors = adjacencyIntersection[arr, subset]},
   Module[{dfs},
@@ -526,7 +545,7 @@ findPath[arr_SparseArray, s_, t_, subset_] := With[
       Throw[Sow[t], "path"],
       Scan[dfs, neighbors[[v]]]],
       "path", Throw[{v, #1}, #2] &]);
-    Block[{$RecursionLimit = Max[(Length@arr)^2 + 1, $RecursionLimit]},
+    Block[{$RecursionLimit = Max[(Length @ arr)^2 + 1, $RecursionLimit]},
       unless[Catch[dfs[s], "path", Flatten[#1] &],
         Null, {}]]]
 ];

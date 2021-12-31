@@ -22,126 +22,153 @@ Package["RegularLanguages`"]
 
 PackageExport["NFAState"]
 NFAState::usage = "\
-NFAState[q, <|a -> {q1, q2 ...}, ...|>] represents the nonterminal state q in an NFA with transitions \[Delta](q, a) = {q1, q2, ...}.
-  - Keys[NFAState[q, trns]] is equivalent to Keys[trns].
-  - Values[NFAState[q, trns]] is equivalent to Values[trns].
-NFAState[q, \[Delta], True] represents a terminal state.
-NFAState[q, \[Delta], {init, term}] represents a state which is initial if init is True, and terminal if term is True.
-NFAState[q, ...][a] gives the transition \[Delta](q, a). ";
+NFAState[q$, <|a$ -> {q$1, q$2, $$}, $$|>] represents the nonterminal state q$ in an NFA with transitions \
+\[Delta]$:40q$, a$) = {q$1, q$2, $$}, $$
+NFAState[$$, True] represents a terminal state.
+NFAState[$$, {init$, term$}] represents a state which is initial if init$ is True, and terminal if term$ is True.
+NFAState[q$, \[Delta]$, $$][a$] gives the transition \[Delta]$:40q$, a$).
+* Keys[NFAState[q$, \[Delta]$, $$]] is equivalent to Keys[\[Delta]$].
+* Values[NFAState[q$, \[Delta]$, $$]] is equivalent to Values[\[Delta]$].
+";
 NFAState::invtrs = "The expression `1` is not a valid NFA transition table. A valid table maps symbols to lists of state ids.";
 NFAState[id_, d : {(_ -> _List) ...}, p___] :=
   NFAState[id, Association @@ d, p];
 NFAState[DFAState[id_, d_?AssociationQ, p___]] :=
   NFAState[id, List /@ d, p];
 NFAState[id_, d_Association?validNFATransitionsQ, ___][a_] :=
-  Lookup[d, Key[a], {}];
+  Lookup[d, Key @ a, {}];
 NFAState /: MakeBoxes[s : NFAState[_, _Association?validNFATransitionsQ, ___],
   form : (StandardForm | TraditionalForm)] := makeStateSummaryBoxes[s, form];
-NFAState /: Keys[NFAState[_, d_, ___]] := Keys[d];
-NFAState /: Values[NFAState[_, d_, ___]] := Values[d];
+NFAState /: Keys[NFAState[_, d_, ___]] := Keys @ d;
+NFAState /: Values[NFAState[_, d_, ___]] := Values @ d;
+NFAState /: Normal[NFAState[_, d_, ___]] := Normal @ d;
 
 PackageExport["NFAQ"]
-NFAQ::usage = "NFAQ[A] yields True if A is a valid NFA.";
+NFAQ::usage = "NFAQ[A$] yields True if A$ is a valid NFA.";
 NFAQ[NFA[_?nfaAscQ]] = True;
-NFAQ[g : (_Graph | Graph3D)] := NFAQ[Quiet@AnnotationValue[g, "Automaton"]];
+NFAQ[g_Graph] := NFAQ[Quiet @ AnnotationValue[g, "Automaton"]];
 NFAQ[_] = False;
 
 PackageExport["NFA"]
 NFA::usage = "\
 The head NFA represents a nondeterministic finite automaton.
-NFA[{q1 -> t1, q2 -> t2, ...}, {q01, q02, ...}, {r1, r2, ...}] specifies an NFA with states q1, q2, ... initial states q01, q02, ..., final states r1, r2, ..., \
-where each ti is a list of transitions {a1 -> {s11, s12, ...}, a2 -> {s21, s22, ...}, ...}, with keys that are symbols in the alphabet, and values which are lists of states.
-  - Not all transitions must be explicitly specified; for any symbol u for which no transition is given from state q, it is assumed \[Delta](q, u) = { }.
-  - Not all states must be explicitly specified; states without keys are assumed to have empty transition sets for all symbols.
-NFA[...][{a1, a2, a3, ...}] returns True if the given NFA accepts the string of symbols a1 a2 a3...
-NFA[...][symbs, All] returns the sequence of transitions on the given symbols as a list of sets of states.
-NFA[...][symbs, spec] returns a subset of the transition sequence, where spec is any sequence specification.";
+NFA[{q$1 -> t$1, q$2 -> t$2, $$}, {inits$$}, {terms$$}] specifies an NFA with states \
+q$1, q$2, $$ initial states inits$, and terminal states terms$, where each t$i is a list or association of the form \
+{a$ -> {s$1, s$2, $$}, $$} representing transitions \[Delta]$:40q$i, a$) = {s$1, s$2, $$}.
+* Not all transitions must be explicitly specified; on any symbol a$ for which there is no key in t$i, it is assumed \[Delta]$:40q$i, a$) = { }.
+* Not all states must be explicitly specified; states without keys are assumed to have empty transition sets for all symbols.
+NFA[spec$$][{a$1, a$2, $$}] returns True if the given NFA accepts the string of symbols a$(1)a$(2)$$
+NFA[spec$$][{symbs$$}, All] returns the sequence of transitions on the given symbols as a list of sets of states.
+NFA[spec$$][{symbs$$}, spec$] returns a subset of the transition sequence, where spec$ is any sequence specification.";
 NFA[OrderlessPatternSequence[
   "states" -> states : <|(_ -> _NFAState) ..|>,
   "initial" -> initial_List,
   "terminal" -> terminal_List,
-  Optional["alphabet" -> alphabet_List, "alphabet" -> Automatic]]] :=
+  Optional[
+    "alphabet" -> alphabet : (_List | Automatic),
+    "alphabet" -> Automatic]]] :=
   NFA[Association @@ {
-    "states" -> states
-    , "initial" -> initial
-    , "terminal" -> terminal
-    , "alphabet" -> autoAlt[alphabet, Union @@ (Keys /@ states)]
+    "states" -> states,
+    "initial" -> initial,
+    "terminal" -> terminal,
+    "alphabet" -> unlessAutomatic[alphabet, Union @@ (Keys /@ states)]
   }];
 NFA[(List | Association)[stateRules : ((_ -> KeyValuePattern[{}]) ...)], initial_List, terminal_List] :=
   Check[
     With[{states = Association[{stateRules} /. {
-      HoldPattern[id_ -> tf : KeyValuePattern[{}]]
-        :> (id -> NFAState[id, Association@tf,
-        {MemberQ[initial, id], MemberQ[terminal, id]}])}]},
+      HoldPattern[id_ -> tf : KeyValuePattern[{}]] :>
+        (id ->
+          NFAState[
+            id,
+            Sort /@ KeySortBy[Association @ tf, {UnsameQ[Epsilon, #]&, Identity}],
+            {
+              MemberQ[initial, id],
+              MemberQ[terminal, id]
+            }
+          ]
+        )
+    }]},
       NFA[
-        "states" -> KeySort@Join[states,
+        "states" -> KeySort @ Join[states,
           AssociationMap[NFAState[#, <||>, {MemberQ[initial, #], MemberQ[terminal, #]}] &,
             Complement[
               Union[Flatten[Map[Values, states, {0, 1}], 2], initial, terminal],
-              Keys@states]]],
-        "initial" -> initial,
-        "terminal" -> terminal]],
+              Keys @ states]]],
+        "initial" -> Sort @ initial,
+        "alphabet" -> Automatic,
+        "terminal" -> Sort @ terminal]],
     $Failed,
     {NFAState::invtrs}];
 NFA[nfa_NFA] := nfa; (* Evaporate, don't ask questions *)
-NFA[A_?FAQ] := ToNFA[A];  (* Automatically cast other automata *)
-NFA /: Graph[nfa : NFA[_?nfaAscQ], opts : OptionsPattern[{Graph, automatonGraph}]] :=
-  Annotate[automatonGraph[nfa, opts], "Automaton" -> nfa];
-NFA /: Graph3D[nfa_NFA?NFAQ, opts : OptionsPattern[{Graph3D, Graph, automatonGraph}]] :=
-  Annotate[
-    Graph3D[automatonGraph[nfa, filterOpts[{opts}, {Graph, automatonGraph}, Graph3D]],
-      filterOpts[{opts}, Graph3D],
-      (*        Lighting -> "Neutral",*)
+NFA[A_?FAQ] := ToNFA @ A;  (* Automatically cast other automata *)
+NFA /: Graph[nfa : NFA[_?nfaAscQ], opts : OptionsPattern[]] := FAGraph[nfa, opts];
+NFA /: Graph3D[nfa_NFA?NFAQ, opts : OptionsPattern[]] := FAGraph3D[nfa, opts];
+(*Annotate[
+  Graph3D[toGraph[nfa, filteredOptionSequence[{opts}, {Graph, toGraph}, Graph3D]],
+    filteredOptionSequence[{opts}, Graph3D],
+    *)(*        Lighting -> "Neutral",*)(*
       EdgeShapeFunction -> GraphElementData[{"Arrow", "ArrowSize" -> 0.015}]],
-    "Automaton" -> nfa];
-NFA /: ToRules[nfa : NFA[_?nfaAscQ]] := Sort@Normal[Normal@*Transitions /@ States@nfa];
+    "Automaton" -> nfa];*)
+NFA /: ToRules[nfa : NFA[_?nfaAscQ]] :=
+  Sort @ Normal[
+    Normal @* StateTransitions /@
+      States @ nfa
+  ];
 NFA /: MakeBoxes[nfa : NFA[asc_?nfaAscQ], form : (StandardForm | TraditionalForm)] :=
   makeAutomatonSummaryBoxes[nfa, form];
-(nfa_NFA?NFAQ)[w_List] := With[{states = States[nfa]},
-  ContainsAny[IDs[nfa, "Terminal"],
+(nfa_NFA?NFAQ)[w_List] := With[{states = States @ nfa},
+  ContainsAny[StateNames[nfa, "Terminal"],
     Fold[EpsilonClosure[Union @@ Through[Lookup[states, #1][#2]],
       states] &,
-      EpsilonClosure[IDs[nfa, "Initial"], states], w]]];
-(nfa_NFA?NFAQ)[w_List, All] := With[{states = States[nfa]},
+      EpsilonClosure[StateNames[nfa, "Initial"], states], w]]];
+(nfa_NFA?NFAQ)[w_List, All] := With[{states = States @ nfa},
   FoldList[
     EpsilonClosure[Union @@ Through[Lookup[states, #1][#2]], states] &,
-    EpsilonClosure[IDs[nfa, "Initial"], states], w]];
+    EpsilonClosure[StateNames[nfa, "Initial"], states], w]];
 (nfa_NFA?NFAQ)[w_List, n_Integer?NonNegative] := nfa[Take[w, n], All];
 (nfa_NFA?NFAQ)[w_List, n_] := Take[nfa[w, All], n];
-(nfa_NFA?NFAQ)[w_String, args___] := nfa[Characters[w], args];
+(nfa_NFA?NFAQ)[w_String, args___] := nfa[Characters @ w, args];
 
 (* ::Subsection:: *)
 (* Constructors *)
 
 PackageExport["RandomNFA"]
 RandomNFA::usage = "\
-RandomNFA[{q1, q2, ...}, {a1, a2, ...}] creates a random NFA with states q1, q2, ... and alphabet a1, a2, ... .
-RandomNFA[n, k] creates a random NFA with n states on an alphabet of k symbols.
-  - One of n or k can be a list, like in the above case.
-  - Default state ids are 1, 2, ... , n
-  - Default symbols are \"a\", \"b\", ... (ascii character range 97 to 97 + k) if k <= 26, or \"x1\", \"x2\", ... \"xk\" otherwise.
-  - If a function f is provided for the \"StatesFunction\"/\"AlphabetFunction\" option, the states/alphabet will be Array[f, n]/Array[f, k].
-RandomNFA[..., maxn, maxk] specifies each state of the returned NFA should define transitions on no more than maxk symbols, \
-and transition to no more than maxn states on any one symbol.
-  - Non-integer values given for maxn/maxk are interpreted as factors of the total number of states/symbols.
+RandomNFA[{states$$}, {symbols$$}] creates a random NFA with states {states$$} and alphabet {symbols$$}.
+RandomNFA[n$, k$] creates a random NFA with n$ states on an alphabet of k$ symbols.
+* Either n$ or k$ can be a list, as in the above case.
+* Default state ids are 1, 2, $$, n$
+* Default symbols are 'a', 'b', $$ (ascii character range 97 to 97 + k) if k \[LessEqual] 26, or 'x1', 'x2', $$, 'xk' otherwise.
+* When a function f$ is provided for the 'StatesFunction' option, the state ids will be Array[f$, n$].
+* When a function g$ is provided for the 'AlphabetFunction' option, the alphabet will be Array[g$, k$].
+RandomNFA[$$, max$n, max$k] specifies each state of the returned NFA should transition to no more than max$n states \
+on any one symbol, and define transitions for no more than max$k symbols.
+* Non-integer values given for max$n and max$k are interpreted as factors of n$ and k$ respectively.
 
 Options:
-\"InitialStates\" -> _Integer | _?NumericQ
-  Number of initial states in the returned NFA
-  - n_Integer: n initial states.
-  - x_?NumericQ: Ceiling[x * n] initial states, where n is the total number of states.
-\"TerminalStates\" -> _Integer | _?NumericQ
-  Number of terminal states in the returned NFA
-  - n_Integer: n terminal states.
-  - x_?NumericQ: Ceiling[x * n] terminal states, where n is the total number of states.
-\"StatesFunction\" -> _
-  Function to generate state names, applied to the list of states or Range[n]
-\"AlphabetFunction\" -> _
-  Function to generate alphabet symbols, applied to the list of symbols or Range[k]
-\"AllStatesReachable\" -> True | False
-  Whether the returned NFA must be connected.
-\"EpsilonProbability\" -> _?(Between[{0, 1}])
-  The probability of a given state generating an Epsilon-transition.";
+'InitialStates' -> _Integer | _Real | _List
+Initial states in the returned NFA
+* l$_List: initial states are exactly the states in l$.
+* m$_Integer: m$ randomly selected initial states.
+* x$_Real: Ceiling[xn$] randomly selected initial states, where n$ is the total number of states.
+
+'TerminalStates' -> _Integer | _Real | _List
+Terminal states in the returned NFA
+* l$_List: terminal states are exactly the states in l$.
+* m$_Integer: m$ terminal states.
+* x$_Real: Ceiling[xn$] terminal states, where n$ is the total number of states.
+
+'StatesFunction' -> _
+Function to generate state names, applied to the list of states or Range[n$]
+
+'AlphabetFunction' -> _
+Function to generate alphabet symbols, applied to the list of symbols or Range[k$]
+
+'AllStatesReachable' -> True | False
+Whether the returned NFA must form a (weakly) connected graph.
+
+'EpsilonProbability' -> _?(Between[{0, 1}])
+The probability of a given state generating an Epsilon-transition.";
 RandomNFA::nstates = "Cannot take `1` state names from `2`.";
 RandomNFA::nsymbs = "Cannot take `1` symbols from `2`.";
 Options[RandomNFA] = {
@@ -154,44 +181,58 @@ Options[RandomNFA] = {
 };
 OptionChecks[RandomNFA] = {
   "EpsilonProbability" -> _?(Between[{0, 1}]),
-  "InitialStates" -> _Integer | _?NumericQ,
-  "TerminalStates" -> _Integer | _?NumericQ,
+  "InitialStates" -> _List | _Integer | _Real,
+  "TerminalStates" -> _List | _Integer | _Real,
   "AllStatesReachable" -> True | False
 };
-RandomNFA[statesin : (_List | _Integer), alphin : (_List | _Integer),
-  Optional[pn : (Automatic | _?Positive), Automatic],
-  Optional[pk : (Automatic | _?Positive), Automatic],
-  opts : OptionsPattern[RandomNFA]?(validQ@RandomNFA)] :=
+RandomNFA[
+  statesin : (_List | _Integer),
+  alphin : (_List | _Integer),
+  pn : (Automatic | _?Positive) : Automatic,
+  pk : (Automatic | _?Positive) : Automatic,
+  opts : OptionsPattern[RandomNFA]?(validQ @ RandomNFA)
+] :=
   With[{
-    n = when[statesin, _Integer, Length@statesin],
-    k = when[alphin, _Integer, Length@alphin]},
+    n = when[_Integer, statesin, Length @ statesin],
+    k = when[_Integer, alphin, Length @ alphin],
+    initOptVal = OptionValue["InitialStates"],
+    termOptVal = OptionValue["TerminalStates"]
+  },
     With[{
-      maxsymbols = intProp[autoAlt[pk, Ceiling@Log[k + 1]], k],
-      maxstates = intProp[autoAlt[pn, Ceiling@Min[Log[n + 1], 0.18 n]], n],
-      nterm = intProp[OptionValue["TerminalStates"], n],
-      ninit = intProp[OptionValue["InitialStates"], n],
+      maxstates = intOrMult[unlessAutomatic[pn, Ceiling @ Min[Log[n + 1], 0.18 n]], n],
       alph = makeAlphabet[alphin, OptionValue["AlphabetFunction"]],
       ids = makeStateIDs[statesin, OptionValue["StatesFunction"]]},
-      Module[{states, init, reachable, unreachable},
-        init = RandomSample[ids, UpTo[ninit]];
+      Module[{reachable, unreachable,
         states = AssociationThread[ids,
           MapThread[
-            Association@If[#2 <= 0, #1,
+            Association @ If[#2 <= 0, #1,
               Append[#1, Epsilon -> RandomSample[ids, Min[#2, maxstates]]]]&,
             {Thread[# -> randomSubset[ids, {1, Min[n, maxstates]}, Length@#]]&
-              /@ randomSubset[alph, {0, Min[k, maxsymbols]}, n],
-              RandomVariate[BinomialDistribution[n, OptionValue["EpsilonProbability"]], n]}]];
+              /@ randomSubset[alph, {0, Min[k, intOrMult[unlessAutomatic[pk, Ceiling @ Log[k + 1]], k]]}, n],
+              RandomVariate[BinomialDistribution[n, OptionValue["EpsilonProbability"]], n]}]],
+        inits = when[_List, initOptVal, RandomSample[ids, UpTo[intOrMult[initOptVal, n]]]]},
         If[OptionValue["AllStatesReachable"],
-          unreachable = Complement[ids, reachable = TransitiveClosure[init, states]];
-          While[Length@unreachable > 0,
+          unreachable = Complement[ids, reachable = TransitiveClosure[inits, states]];
+          While[Length @ unreachable > 0,
             (If[KeyExistsQ[states[#1], #2],
-              AppendTo[states[#1, #2], First@unreachable],
-              states[#1, #2] = {First@unreachable}])&
+              AppendTo[states[#1, #2], First @ unreachable],
+              states[#1, #2] = {First @ unreachable}])&
               @@ (RandomChoice /@ {reachable, alph});
             unreachable = Complement[unreachable,
-              reachable = Union[reachable, TransitiveClosure[{First@unreachable}, states]]]]];
-        NFA[states, init, RandomSample[ids, UpTo[nterm]]]]]
+              reachable = Union[reachable, TransitiveClosure[{First @ unreachable}, states]]]]];
+        NFA[
+          states,
+          inits,
+          when[_List,
+            termOptVal,
+            RandomSample[ids, UpTo[intOrMult[termOptVal, n]]]]
+        ]]]
   ];
+(*RandomNFA[*)
+(*  statesin : (_List | _Integer),*)
+(*  alphin : (_List | _Integer),*)
+(*  opts : OptionsPattern[RandomNFA]*)
+(*] := RandomNFA[statesin, alphin, Automatic, Automatic, opts];*)
 
 PackageExport["NthFromLastNFA"]
 NthFromLastNFA::usage = "NthFromLastNFA[n] returns an NFA accepting the language of strings over {\"a\", \"b\"} whose n-th from last character is \"a\"
@@ -200,7 +241,7 @@ NthFromLastNFA[n_] := NthFromLastNFA[n, "a", {"a", "b"}];
 NthFromLastNFA[n_, a_, alph_] := NFA[
   "states" -> Association[
     0 -> NFAState[0, Association[Thread[DeleteCases[alph, a] -> {0}, List, 1], {a -> {0, 1}}], {True, False}],
-    Table[i -> NFAState[i, Association@Thread[alph -> {i + 1}, List, 1], {False, False}], {i, 1, n - 1}],
+    Table[i -> NFAState[i, Association @ Thread[alph -> {i + 1}, List, 1], {False, False}], {i, 1, n - 1}],
     n -> NFAState[n, <||>, {False, True}]],
   "initial" -> {0},
   "terminal" -> {n},
@@ -220,13 +261,13 @@ The algorithm to use when converting a regular expression to an NFA.
   - \"Thompson\": Thompson construction" ;
 OptionChecks[ToNFA] = { Method -> "Glushkov" | "Thompson" };
 Options[ToNFA] = {Method -> "Glushkov"};
-ToNFA[nfa_NFA, OptionsPattern[ToNFA]?(validQ@ToNFA)] := nfa;
-ToNFA[DFA[asc_?dfaAscQ], OptionsPattern[ToNFA]?(validQ@ToNFA)] :=
+ToNFA[nfa_NFA, OptionsPattern[ToNFA]?(validQ @ ToNFA)] := nfa;
+ToNFA[DFA[asc_?dfaAscQ], OptionsPattern[ToNFA]?(validQ @ ToNFA)] :=
   NFA[MapAt[NFAState, KeyDrop[asc, {"icon"}], {{"states", All}}]];
-ToNFA[g_?FAGraphQ, OptionsPattern[ToNFA]?(validQ@ToNFA)] := ToNFA[FAExpression@g];
-ToNFA[EmptyLanguage, OptionsPattern[ToNFA]?(validQ@ToNFA)] = NFA[{}, {1}, {}];
-ToNFA[Epsilon, OptionsPattern[ToNFA]?(validQ@ToNFA)] = NFA[{}, {1}, {1}];
-ToNFA[Regex[x_]] := NFA[
+ToNFA[g_?FAGraphQ, OptionsPattern[ToNFA]?(validQ @ ToNFA)] := ToNFA[FAExpression @ g];
+ToNFA[EmptyLanguage, OptionsPattern[ToNFA]?(validQ @ ToNFA)] = NFA[{}, {1}, {}];
+ToNFA[Epsilon, OptionsPattern[ToNFA]?(validQ @ ToNFA)] = NFA[{}, {1}, {1}];
+ToNFA[RE[x_]] := NFA[
   "states" -> <|
     1 -> NFAState[1, <|x -> {2}|>, {True, False}],
     2 -> NFAState[2, <||>, {False, True}] |>,
@@ -266,16 +307,16 @@ MinimizeNFA[nfa_?NFAQ, OptionsPattern[MinimizeNFA]?(validQ @ MinimizeNFA)] :=
     B = ToDFA[nfa, Method -> "Minimal", "StateNames" -> "Subset"];
     nfaB = NFA[B];
     ram = Table[Boole[IntersectingQ[p, q]],
-      {p, rows = DeleteCases[IDs[B], {}]},
+      {p, rows = DeleteCases[StateNames[B], {}]},
       {q, DeleteCases[
-        IDs[ToDFA[FAReversal@nfa, Method -> "Minimal",
+        StateNames[ToDFA[FAReversal @ nfa, Method -> "Minimal",
           "StateNames" -> "Subset"]], {}]}];
-    states = Values@KeyDrop[States@B, {{}}];
+    states = Values @ KeyDrop[States @ B, {{}}];
     idxs = PositionIndex[rows ~ Append ~ {}][[All, 1]];
-    initidx = idxs[First@IDs[B, "Initial"]];
-    termidxs = Lookup[idxs, IDs[B, "Terminal"]];
+    initidx = idxs[First @ StateNames[B, "Initial"]];
+    termidxs = Lookup[idxs, StateNames[B, "Terminal"]];
     pGrids = primeGrids[ram];
-    PrintTemporary[Length@pGrids, " prime grids computed."];
+    PrintTemporary[Length @ pGrids, " prime grids computed."];
 
     Switch[OptionValue[Method],
       "Exhaustive", reduceGridsExhaustive,
@@ -283,7 +324,7 @@ MinimizeNFA[nfa_?NFAQ, OptionsPattern[MinimizeNFA]?(validQ @ MinimizeNFA)] :=
       Automatic,
       With[ {nGrids = Length @ pGrids},
         If[NSum[Binomial[nGrids, k],
-          {k, Ceiling[Log2[StateCount@B]],
+          {k, Ceiling[Log2[StateCount @ B]],
             Min[nGrids, StateCount[nfa] - 1, StateCount[B] - 1]}]
           <= 256 , reduceGridsExhaustive, reduceGridsSA]]
     ][nfa, B, nfaB, ram, rows, states, idxs, initidx, termidxs, pGrids, OptionValue[MaxIterations]]
@@ -306,15 +347,15 @@ thompsonNFA[regex_?CompoundREQ] := Module[
   {i = 1, states = <||>, newid, symb, convert, attach, socket, chain, close},
   newid[] := (states[i] = NFAState[i, <||>, False]; i++);
   attach[from_, to_, ret_ : Null, with_ : Epsilon] := (
-    states[from] = AddTransitions[states[from], with -> when[to, _List, {to}]];
+    states[from] = AddTransitions[states[from], with -> when[_List, to, {to}]];
     unless[ret, 1, from, 2, to, All, {from, to}]);
-  close[{q0_, f0_}] := {attach[newid[], {q0, #}, 1], Last@attach[f0, {q0, #}, 2]}&@newid[];
+  close[{q0_, f0_}] := {attach[newid[], {q0, #}, 1], Last @ attach[f0, {q0, #}, 2]}&@newid[];
   close[symb[a_]] := attach[Sequence @@ ConstantArray[newid[], 2], All, a];
   chain[{q0_, f0_}, {q1_, f1_}] := (attach[f0, q1]; {q0, f1});
   chain[{q0_, f0_}, symb[a_]] := {q0, attach[f0, newid[], 2, a]};
   socket[{q0_, f0_}, {q1_, f1_}] := {attach[q0, q1, 1], attach[f1, f0, 2]};
   socket[{q0_, f0_}, symb[a_]] := attach[q0, f0, All, a];
-  convert[REClosure[x_]] := close@convert@x;
+  convert[REClosure[x_]] := close @ convert @ x;
   convert[HoldPattern[REUnion[x__]]] := Fold[socket, {newid[], newid[]}, convert /@ {x}];
   convert[HoldPattern[REConcat[x__]]] := Fold[chain, ConstantArray[newid[], 2], convert /@ {x}];
   convert[a_] := symb[a];
@@ -324,7 +365,7 @@ thompsonNFA[regex_?CompoundREQ] := Module[
 ];
 
 glushkovNFA[r_] := With[{e = LinearizeRE[r, 2]},
-  With[{P = pSet@e, D = dSet@e, F = fSet@e},
+  With[{P = pSet @ e, D = dSet @ e, F = fSet @ e},
     NFA[
       Append[GroupBy[F, {Last@*First -> Last, First -> Last}, Union],
         1 -> GroupBy[P, First -> Last, Union]],
@@ -337,7 +378,7 @@ glushkovNFA[r_] := With[{e = LinearizeRE[r, 2]},
 validNFATransitionsQ[<|(_ -> _List) ...|>] = True;
 validNFATransitionsQ[x_] /; Message[NFAState::invtrs, x] = False;
 
-primeGrids[ram_SparseArray] := primeGrids[Normal@ram];
+primeGrids[ram_SparseArray] := primeGrids[Normal @ ram];
 primeGrids[ram_] := With[{primes = CreateDataStructure["LinkedList"],
   queue =
     CreateDataStructure["Queue", Map[List, Position[ram, 1], {2}]],
@@ -349,27 +390,27 @@ primeGrids[ram_] := With[{primes = CreateDataStructure["LinkedList"],
   newCols =
     Complement[
       Catenate@
-        Position[Transpose@ram[[#1, All]],
+        Position[Transpose @ ram[[#1, All]],
           ConstantArray[1, Length@#1], {1}, Heads -> False], #2] &},
   Module[{g, enqueue},
     enqueue[x_] := (enqueue[x] = Null; queue["Push", x]);
     While[! queue["EmptyQ"],
       g = queue["Pop"];
-      With[{i = First@g, j = Last@g, rows = newRows @@ g,
+      With[{i = First @ g, j = Last @ g, rows = newRows @@ g,
         cols = newCols @@ g},
         If[SameQ[{}, rows, cols],
           primes["Append", g],
           (If[rows =!= {}, enqueue[{Union[i, {#}], j}] & /@ rows];
           If[cols =!= {}, enqueue[{i, Union[j, {#}]}] & /@ cols])]
       ]];
-    Normal@primes
+    Normal @ primes
   ]];
 
 
 reduceGridsExhaustive[nfa_, B_, nfaB_, ram_, rows_, states_, idxs_, initidx_, termidxs_, grids_, iterations_] :=
   Module[{isCover, tryMakeLegitNFA, nCandidates, maxi,
-    mini = Ceiling[Log2[StateCount@B]],
-    nGrids = Length@grids},
+    mini = Ceiling[Log2[StateCount @ B]],
+    nGrids = Length @ grids},
     With[{goals = Position[ram, 1]},
       isCover[x_] := ContainsAll[Catenate[Tuples /@ x], goals]];
 
@@ -378,18 +419,18 @@ reduceGridsExhaustive[nfa_, B_, nfaB_, ram_, rows_, states_, idxs_, initidx_, te
         f = With[{rang = rangeOver[subset], halfcov = subset[[All, 1]]},
           AssociationMap[
             Function[{z}, Select[rang, MemberQ[halfcov[[#]], z] &]],
-            Range[Length@rows + 1]]]},
-        newinits = f@initidx;
+            Range[Length @ rows + 1]]]},
+        newinits = f @ initidx;
         {newstates, newterms} = Reap[Table[
           NFAState[i,
             Merge[
-              Transitions /@ states[[selps = Select[rangeOver[f], MemberQ[f[#], i] &]]],
+              StateTransitions /@ states[[selps = Select[rangeOver[f], MemberQ[f[#], i] &]]],
               Intersection @@ (f@*idxs /@ #) &] ,
             {MemberQ[newinits, i],
               If[ContainsOnly[selps, termidxs],
                 (Sow[i, "terms"]; True),
                 False]}],
-          {i, Length@subset}], "terms"];
+          {i, Length @ subset}], "terms"];
         With[{intRuleNFA = NFA[
           "states" -> newstates,
           "initial" -> newinits,
@@ -401,11 +442,11 @@ reduceGridsExhaustive[nfa_, B_, nfaB_, ram_, rows_, states_, idxs_, initidx_, te
     nCandidates = NSum[Binomial[nGrids, k], {k, mini, maxi}];
     PrintTemporary[nCandidates, " candidate NFAs must be checked for equivalence."];
     Catch[Do[
-      throwIf[Not@*FailureQ, Quiet@ParallelTry[tryMakeLegitNFA, Subsets[grids, {i}]]];
+      throwIf[Not@*FailureQ, Quiet @ ParallelTry[tryMakeLegitNFA, Subsets[grids, {i}]]];
       PrintTemporary["No Equivalent NFAs with ", i, If[i === 1, " state", " states"],
         " exist. (", (nCandidates -= Binomial[nGrids, i]), " canditates remain)"]
       , {i, Range[mini, maxi]}];
-    First@MinimalBy[{FAExpression@nfa, nfaB}, StateCount]]
+    First @ MinimalBy[{FAExpression @ nfa, nfaB}, StateCount]]
   ];
 
 reduceGridsSA[nfa_, B_, nfaB_, ram_, rows_, states_, idxs_, initidx_, termidxs_, grids_, iterations_] :=
@@ -416,7 +457,7 @@ reduceGridsSA[nfa_, B_, nfaB_, ram_, rows_, states_, idxs_, initidx_, termidxs_,
     isCover[x_] := And @@ MapThread[ContainsAll, {Join[Sequence @@ x, 2], goals}];
 
     whereIs = Module[{i = 1},
-      Association@Last@Reap[
+      Association @ Last @ Reap[
         Scan[With[{j = i++}, Outer[Sow[j, {{##}}] &, Sequence @@ #]] & , grids],
         _,
         Rule]];
@@ -424,13 +465,13 @@ reduceGridsSA[nfa_, B_, nfaB_, ram_, rows_, states_, idxs_, initidx_, termidxs_,
     feasibleNeighbor[vec_] :=
       Module[{comp, bit,
         newvec = Unitize[
-          vec - RandomChoice[{flipProb, 1 - flipProb} -> {1, 0}, Length@vec]],
+          vec - RandomChoice[{flipProb, 1 - flipProb} -> {1, 0}, Length @ vec]],
         i = 0},
         comp = Complement[goals, Catenate[Tuples /@ Pick[grids, newvec, 1]]];
-        While[Length@comp > 0,
-          bit = RandomChoice[whereIs[RandomChoice@comp]];
+        While[Length @ comp > 0,
+          bit = RandomChoice[whereIs[RandomChoice @ comp]];
           newvec[[bit]] = 1;
-          comp = Complement[comp, Tuples@grids[[bit]]]];
+          comp = Complement[comp, Tuples @ grids[[bit]]]];
         newvec
       ];
 
@@ -439,25 +480,25 @@ reduceGridsSA[nfa_, B_, nfaB_, ram_, rows_, states_, idxs_, initidx_, termidxs_,
         Module[{newSolution, newCost, solution, cost, bestCost,
           k = 0,
           temp = initTemp,
-          initSolution = feasibleNeighbor@ConstantArray[0, Length@grids],
+          initSolution = feasibleNeighbor @ ConstantArray[0, Length @ grids],
           bestSolutions = CreateDataStructure["HashSet"]},
           solution = initSolution;
-          cost = Total@initSolution;
+          cost = Total @ initSolution;
           bestSolutions["Insert", solution];
           bestCost = cost;
           While[k++ < iterations,
             newSolution = feasibleNeighbor[solution];
-            newCost = Total@newSolution;
+            newCost = Total @ newSolution;
             If[newCost < bestCost,
               bestSolutions["RemoveAll"];
               bestCost = newCost];
             If[newCost == bestCost,
               bestSolutions["Insert", newSolution]];
-            If[newCost <= cost || RandomReal[] <= Quiet@Exp[-(newCost - cost) / temp],
+            If[newCost <= cost || RandomReal[] <= Quiet @ Exp[-(newCost - cost) / temp],
               solution = newSolution];
             temp *= alpha ];
 
-          {bestCost, Normal@bestSolutions}
+          {bestCost, Normal @ bestSolutions}
         ]
     ];
 
@@ -467,12 +508,12 @@ reduceGridsSA[nfa_, B_, nfaB_, ram_, rows_, states_, idxs_, initidx_, termidxs_,
         f = With[{rang = rangeOver[cover], halfcov = cover[[All, 1]]},
           AssociationMap[
             Function[{z}, Select[rang, MemberQ[halfcov[[#]], z] &]]
-            , Range[Length@rows + 1]]];
-        newinits = f@initidx;
+            , Range[Length @ rows + 1]]];
+        newinits = f @ initidx;
         {newstates, newterms} = Reap[Table[
           NFAState[i,
             Merge[
-              Transitions /@
+              StateTransitions /@
 
                 states[[selps = Select[rangeOver[f], MemberQ[f[#], i] &]]],
               Intersection @@ (f@*idxs /@ #) &],
@@ -480,7 +521,7 @@ reduceGridsSA[nfa_, B_, nfaB_, ram_, rows_, states_, idxs_, initidx_, termidxs_,
 
               If[ContainsOnly[selps, termidxs], Sow[i, "terms"]; True,
                 False]}],
-          {i, Length@cover}], "terms"];
+          {i, Length @ cover}], "terms"];
         With[{intRuleNFA = NFA[
           "states" -> newstates,
           "initial" -> newinits,
@@ -489,14 +530,14 @@ reduceGridsSA[nfa_, B_, nfaB_, ram_, rows_, states_, idxs_, initidx_, termidxs_,
 
           If[EquivalentFAQ[intRuleNFA, nfaB], intRuleNFA, $Failed]]];
 
-    Quiet@LaunchKernels[];
+    Quiet @ LaunchKernels[];
     imax =
-      Min[Length@grids, StateCount[nfa] - 1, StateCount[nfaB] - 1];
+      Min[Length @ grids, StateCount[nfa] - 1, StateCount[nfaB] - 1];
     Catch[
       Do[throwIf[Not@*FailureQ,
-        Quiet@ParallelTry[tryMakeLegitNFAFromIdxs, covs]],
+        Quiet @ ParallelTry[tryMakeLegitNFAFromIdxs, covs]],
         {covs,
           SortBy[ParallelTable[optimizeCover[], {Max[$KernelCount, 1]}],
             First][[All, 2]]}];
-      First@MinimalBy[{FAExpression@nfa, nfaB}, StateCount]]
+      First @ MinimalBy[{FAExpression @ nfa, nfaB}, StateCount]]
   ]
