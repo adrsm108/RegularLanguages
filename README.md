@@ -13,12 +13,12 @@ PacletInstall[
 
 Once installed, the paclet can be loaded with
 ```wl
-<<RegularLanguages`
+<< RegularLanguages`
 ```
 
 Information about package symbols can be inspected using
 ```wl
-?RegularLanguages`*
+? RegularLanguages`*
 ```
 
 # Usage
@@ -91,7 +91,7 @@ NFA[{1 -> {x -> {1, 2}, z -> {3, 4}},
 ## Regular Expressions
 
 Regular expressions are represented symbolically by the operations [REUnion](#REUnion), [REConcat](#REConcat),
-and [REClosure](#REClosure).
+and [REStar](#REStar).
 
 A Regular expression may be created from a string using the [ParseRE](#ParseRE) function.
 The recognized constructs are infix-`|` for union, postfix-`*` for closure, juxtaposition for concatenation, `(` and `)` for grouping, and `\ ` for escaping the next special character.
@@ -102,7 +102,7 @@ All other characters are parsed as literals.
 ```wl
 In[1] = ParseRE["(a|b*)de*"]
 
-Out[80] = REConcat[REUnion["a", REClosure["b"]], "d", REClosure["e"]]
+Out[80] = REConcat[REUnion["a", REStar["b"]], "d", REStar["e"]]
 ```
 
 ## Running a Finite Automaton
@@ -151,6 +151,7 @@ Out[27]= {0, 1, 2}
 ``` 
 
 Consider the following NFA for the same language `a*b*`
+
 ![](images/astarbstarnfa.svg)
 
 ```wl
@@ -184,493 +185,743 @@ function expecting an NFA or DFA. Calling `NFA` or `DFA` on the graph returns th
 function `FAExpression`.
 
 #### Regular expressions
-By default, regular expressions alias the system symbols `VerticalSeparator`, `CenterDot`, and `SuperStar` to `REUnion`, `REConcat`, and `REClosure`, respectively.
+By default, regular expressions alias the system symbols `VerticalSeparator`, `CenterDot`, and `SuperStar` to `REUnion`, `REConcat`, and `REStar`, respectively.
 These symbols have no default meaning, but format automatically, and allow for natural input.
 See [UseNotation](#usenotation) for more information.
 
 # Package Symbols
 
-### AddTransitions
-**Attributes:** Protected
-- **AddTransitions[*nfastate*, *a* &rarr; {*q1*, *q2*, ...}]** returns an [NFAState](#NFAState) s where s[*a*] = Union[*nfastate*[*a*], {*q1*, *q2*, ...}]
-- **AddTransitions[*nfastate*, {*a1* &rarr; {*q1*, *q2*, ...}, ...}]** returns an [NFAState](#NFAState) with the specified transitions added.
-- **AddTransitions[*rules*]** returns an operator form of AddTransitions. 
+### ActivateRE
+**Attributes:** Protected, ReadProtected
+- **ActivateRE[*regex*]** removes Inactive from the heads [REUnion](#REUnion), [REConcat](#REConcat), and [REStar](#REStar) in *regex*.
 
-### AdvancedSimplifyRE
-**Attributes:** Protected
-- **AdvancedSimplifyRE[*r*]** applies additional techniques of factorization and regular language equivalence to simplify the given regular expression.
-
-**Options:** "Factorize"
-
+### CompleteNFA
+**Attributes:** Protected, ReadProtected
+- **CompleteNFA[*nfa*]** returns an equivalent NFA with one extra state and non-empty transition sets for every alphabet symbol in every state.
 
 ### CompoundREQ
-**Attributes:** Protected
-- **CompoundREQ[*expr*]** returns True if *expr* has head [REUnion](#REUnion), [REConcat](#REConcat), or [REClosure](#REClosure).
-- **CompoundREQ[*expr*, *patt*]** returns True if *expr* is a compound regex and every character in the standard alphabet of regex matches *patt*.
+**Attributes:** Protected, ReadProtected
+- **CompoundREQ[*expr*]** returns True if *expr* has head [REUnion](#REUnion), [REConcat](#REConcat), or [REStar](#REStar).
+- **CompoundREQ[*expr*, *patt*]** returns True if *expr* has head [REUnion](#REUnion), [REConcat](#REConcat), or [REStar](#REStar), and every element of [LanguageAlphabet](#LanguageAlphabet)[*expr*] matches *patt*.
+
+### CreateUniqueState
+**Attributes:** Protected, ReadProtected
+- **CreateUniqueState[]** is equivalent to CreateUUID["state-"].
+- **CreateUniqueState[*A*]** returns an integer, string, or symbol suitable for use as a state name in the automaton *A*.
+  - The returned name attempts to follow the naming conventions of *A*
+  - If every state in *A* is an integer, the generated name will be the integer one greater than the maximum state name in *A*.
+  - If every state in *A* is a string, the generated name will be a string.
+  - If every state in *A* is a symbol, the generated name will be a symbol.
+  - If no simple convention is identified, the generated name will be a string obtained using CreateUUID.
+- **CreateUniqueState[&hellip;, *n*]** generates a list of *n* state names.
 
 ### DecimalFactorDFA
-**Attributes:** Protected
-- **DecimalFactorDFA[*n*]** returns a DFA accepting lists of digits whose decimal value is divisible by *n*
+**Attributes:** Protected, ReadProtected
+- **DecimalFactorDFA[*n*]** returns a DFA accepting lists of digits whose decimal value is divisible by *n*.
 - **DecimalFactorDFA[*n*, True]** returns a DFA accepting lists of digits whose decimal value is divisible by *n*, as well as the empty list.
 
-### DeleteUnreachableStates
-**Attributes:** Protected
-- **DeleteUnreachableStates[*A*]** returns an automaton whose state set is exactly [TransitiveClosure](#TransitiveClosure)[*A*]
-
 ### DFA
-**Attributes:** Protected
-- The head DFA represents a Deterministic Finite Automaton.
-- **DFA[{*q1* &rarr; *t1*, *q2* &rarr; *t2* , ...}, {*q0*}, {*r1*, *r2*, ...}]** specifies a DFA with states *q1*, *q2*, ..., initial state *q0*, and final states *r1*, *r2*, ...,where each *ti* is a list of transition rules {a1 &rarr; s1, a2 &rarr; s2, ...} specifying exactly one state s for each symbol a of the alphabet.
-- **DFA[{*q1* &rarr; {*s1*, *s2*, ...}, ...}, {*a1*, *a2*, ...}, ...]** is an alternate form for the above. Here, transitions are given as lists of states, and the alphabet is supplied as a second argument.
-- **DFA[...][{*a1*, *a2*, *a3*, ...}]** returns True if the given DFA accepts the string of symbols *a1* *a2* *a3*...
-- **DFA[...][*symbs*, *All*]** returns the sequence of transitions on the given symbols as a list of states.
-- **DFA[...][*symbs*, *spec*]** returns a subset of the transition sequence, where *spec* is any sequence specification.
-- **DFA[...][*string*, ...]** is equivalent to DFA[...][*Characters*[*string*], ...]
+**Attributes:** Protected, ReadProtected
+- The head DFA represents a deterministic finite automaton.
+- **DFA[{*q<sub>1</sub>* &rarr; {*a<sub>1</sub>* &rarr; *s<sub>1</sub>*, *a<sub>2</sub>* &rarr; *s<sub>2</sub>*, &hellip;}, &hellip;}, {*q<sub>*init*</sub>*}, {*terms*&hellip;}]** specifies a DFA with initial state *q<sub>*init*</sub>*, terminal states *terms*, and transitions {*q<sub>1</sub>*, *a<sub>1</sub>*} &rarr; *s<sub>1</sub>*, {*q<sub>1</sub>*, *a<sub>2</sub>*} &rarr; *s<sub>2</sub>*, &hellip;, where *q<sub>*i*</sub>* and *s<sub>*i*</sub>* are states, and *a<sub>*i*</sub>* are symbols of the alphabet.
+- **DFA[{*q<sub>1</sub>* &rarr; {*s<sub>1</sub>*, *s<sub>2</sub>*, &hellip;}, &hellip;}, {*a<sub>1</sub>*, *a<sub>2</sub>*, &hellip;}, &hellip;]** is an alternate form for the above. Here, transitions are given as lists of states, and the alphabet is supplied as a second argument.
+- *dfa*[{*a<sub>1</sub>*, *a<sub>2</sub>*, &hellip;}] returns True if the given DFA accepts the string *a<sub>1</sub>* *a<sub>2</sub>* &hellip;
+- *dfa*["*string*"] is equivalent to *dfa*[Characters["*string*"]].
 
 ### DFAQ
-**Attributes:** Protected
+**Attributes:** Protected, ReadProtected
 - **DFAQ[*x*]** returns True if *x* is a valid DFA.
 
-### DFAState
-**Attributes:** Protected
-- **DFAState[*q*, <|*a1* &rarr; *q1*, *a2* &rarr; *q2*, ...|>]** represents the nonterminal state with ID *q* in a DFA with transitions δ(*q*, *ai*) = *qi*.
-  - Keys[*DFAState*[*q*, *trns*]] is equivalent to Keys[*trns*].
-  - Values[*DFAState*[*q*, *trns*]] is equivalent to Values[*trns*].
-- **DFAState[*q*, δ, True]** represents a terminal state.
-- **DFAState[*q*, δ, {*init*, *term*}]** represents a state which is initial if *init* is True, and terminal if *term* is True.
-- **DFAState[*q*, ...][*a*]** gives the transition δ(*q*, *a*)
-
-### EmptyFAQ
-**Attributes:** Protected
-- **EmptyFAQ[*A*]** returns True if *A* is an automaton whose language an empty set.
-
 ### EmptyLanguage
-**Attributes:** Protected
+**Attributes:** Protected, ReadProtected
 - **EmptyLanguage** is a symbol representing the language with no elements. In various contexts, it can be viewed as the empty set, an automaton with no reachable accepting states, the regular expression matching nothing, etc.
 
-### EntireFAQ
-**Attributes:** Protected
-- **EntireFAQ[*A*]** yields True if *A* is an automaton which accepts all strings over its alphabet.
+### EmptyLanguageQ
+**Attributes:** Protected, ReadProtected
+- **EmptyLanguageQ[*L*]** returns True if *L* is an automaton or regular expression whose language is the empty set.
 
 ### Epsilon
-**Attributes:** Protected
+**Attributes:** Protected, ReadProtected
 - **Epsilon** is a symbol representing the string of length 0.
 
 ### EpsilonClosure
-**Attributes:** Protected
-- **EpsilonClosure[*A*]** computes the epsilon closure (that is, the transitive closure over the empty string) of the initial states in the Automaton *A*.
-- **EpsilonClosure[*q*, *A*]** gives the epsilon closure of state *q* in *A*.
-- **EpsilonClosure[{*q1*, *q2*, ...}, *A*]** gives EpsilonClosure[*q1*, *A*] ⋃ EpsilonClosure[*q2*, *A*] ⋃ ...
-- **EpsilonClosure[*states*, *transitions*]** finds the epsilon closure of *states* in *transitions*, where *transitions* can be any transition specification recognized by [TransitiveClosure](#TransitiveClosure). 
+**Attributes:** Protected, ReadProtected
+- **EpsilonClosure[*q*, *nfa*]** gives the set of states reachable from *q* in *nfa* via any sequence of [Epsilon](#Epsilon) transitions.
+- **EpsilonClosure[{*q<sub>1</sub>*, *q<sub>2</sub>*, &hellip;}, *nfa*]** gives EpsilonClosure[*q<sub>1</sub>*, *nfa*] ⋃ EpsilonClosure[*q<sub>2</sub>*, *nfa*] ⋃ &hellip;
+- **EpsilonClosure[*nfa*]** gives EpsilonClosure[[States](#States)[*nfa*, "Initial"], *nfa*].
+- **EpsilonClosure[*states*, *trns*]** computes the epsilon closure of *states* using transition table *trns*, which may be can be any transition specification recognized by [ReachableStates](#ReachableStates).
+
+### EpsilonNFAQ
+**Attributes:** Protected, ReadProtected
+- **EpsilonNFAQ[*nfa*]** returns True if *nfa* is an NFA with [Epsilon](#Epsilon) transitions, and False otherwise.
 
 ### EquivalentFAQ
-**Attributes:** Protected
-- **EquivalentFAQ[*A1*, *A2*]** is True if *A1* and *A2* are automata that recognize the same language.
-- **EquivalentFAQ[*A1*, *A2*, ...]** yields true if all *Ai* are equivalent automata.
+**Attributes:** Protected, ReadProtected
+- **EquivalentFAQ[*A<sub>1</sub>*, *A<sub>2</sub>*]** is True if *A<sub>1</sub>* and *A<sub>2</sub>* are automata that recognize the same language.
+- **EquivalentFAQ[*A<sub>1</sub>*, *A<sub>2</sub>*, &hellip;]** yields true if all *A<sub>*i*</sub>* are equivalent automata.
 - **EquivalentFAQ[*A*]** yields true if *A* is an automaton.
 
-### EquivalentLanguageQ
-**Attributes:** Protected
-- **EquivalentLanguageQ[*L1*, *L2*, ...]** returns True if all *Li* are automata or regular expressions that describe the same language.
+### ExpandAllRE
+**Attributes:** Protected, ReadProtected
+- **ExpandAllRE[*regex*]** expands the given regular expression by distributing [REConcat](#REConcat) over [REUnion](#REUnion) at all levels.
 
 ### ExpandRE
-**Attributes:** Protected
-- **ExpandRE[*r*]** expands the given regular expression by distributing [REConcat](#REConcat) over [REUnion](#REUnion).
+**Attributes:** Protected, ReadProtected
+- **ExpandRE[*regex*]** expands the given regular expression by distributing [REConcat](#REConcat) over [REUnion](#REUnion).
 
 ### FAClosure
-**Attributes:** Protected
-- **FAClosure[*A*]** returns an NFA for the closure of the language recognized by *A* with respect to concatenation.
+**Attributes:** Protected, ReadProtected
+- **FAClosure[*A*]** returns an NFA for the closure of the language of automaton *A* with respect to concatenation.
 
 ### FAComplement
-**Attributes:** Protected
-- **FAComplement[*A*]** returns a DFA recognizing the complement of the language recognized by *A*.
+**Attributes:** Protected, ReadProtected
+- **FAComplement[*A*]** returns an automaton of the same type as *A* for the complement of the language of *A*.
 
-### FAConcat
-**Attributes:** Protected
-- **FAConcat[*A1*, *A2*, ...]** gives an NFA accepting the concatenation of the languages recognized by the *Ai*.
+### FAConcatenation
+**Attributes:** Protected, ReadProtected
+- **FAConcatenation[*A<sub>1</sub>*, *A<sub>2</sub>*, &hellip;]** gives an NFA accepting the concatenation of the languages of automata *A<sub>*i*</sub>*.
 
 ### FactorRE
-**Attributes:** Protected
-- **FactorRE[*r*]** attempts to factor the given regular expression.
+**Attributes:** Protected, ReadProtected
+- **FactorRE[*regex*]** attempts to factor the given regular expression by pulling [REConcat](#REConcat) from [REUnion](#REUnion).
+- **FactorRE** is the inverse of [ExpandRE](#ExpandRE), with some qualifications
+  - Regular expressions do not factor uniquely. Thus, FactorRE gives only one of potentially many factorizations.
+
+**Options:** Method
+
+- **Method** &rarr; "Greedy" | "Careful"   , *default: "Greedy"*    
+  The method to use for factoring.
+  - *"Greedy":* Return the first factorization found.
+  - *"Careful":* Consider all possible factorizations, and select one which favors a shorter final expression.
+     - This option is likely to be significantly more resource intensive.
+
+### FADifference
+**Attributes:** Protected, ReadProtected
+- **FADifference[*A*, *B<sub>1</sub>*, *B<sub>2</sub>*, &hellip;]** returns an NFA for the language consisting of words accepted by *A* and not accepted by any of the automata *B<sub>*i*</sub>*.
 
 ### FAExpression
-**Attributes:** Protected
-- **FAExpression[*A*]** returns *A* as an automaton with head NFA or DFA.
+**Attributes:** Protected, ReadProtected
+- **FAExpression[*A*]** returns automaton *A* as an expression with head NFA or DFA.
 
 ### FAExpressionQ
-**Attributes:** Protected
-- **FAExpressionQ[*A*]** returns True if *A* is a valid Automaton with head NFA or DFA.
+**Attributes:** Protected, ReadProtected
+- **FAExpressionQ[*A*]** returns True if *A* is a valid automaton with head NFA or DFA.
+
+### FAGraph
+**Attributes:** Protected, ReadProtected
+- **FAGraph[*A*, *opts*&hellip;]** produces a Graph of the automaton *A* with options *opts*.
+  - *opts* can contain any option recognized by Graph.
+  - This is equivalent to Graph[*A*, *opts*] when *A* satisfies [FAExpressionQ](#FAExpressionQ).
+
+**Options:** "DisableStyling", "InitialVertexRules", "TerminalVertexRules", "InitialVertexStyle", "TerminalVertexStyle", "EpsilonEdgeStyle", "InitialArrows", "InitialArrowStyle", VertexLabels, EdgeLabels
+
+- **"DisableStyling"** &rarr; True | False   , *default: False*    
+  When True, the returned graph has no styling applied.
+
+
+- **"InitialVertexStyle"** &rarr; _   , *default: Automatic*    
+  Styles applied to initial state vertices
+
+
+- **"InitialVertexRules"** &rarr; _   , *default: Automatic*    
+  List of annotation rules applied to initial state vertices
+  - Overrides "InitialVertexStyle" option in favor of VertexStyle rule.
+
+
+- **"TerminalVertexStyle"** &rarr; _   , *default: Automatic*    
+  Styles applied to terminal state vertices
+
+
+- **"TerminalVertexRules"** &rarr; _   , *default: Automatic*    
+  List of annotation rules applied to terminal state vertices
+  - Overrides "TerminalVertexStyle" option in favor of VertexStyle rule.
+
+
+- **"EpsilonEdgeStyle"** &rarr; _   , *default: Automatic*    
+  Styles applied to edges representing [Epsilon](#Epsilon)-transitions
+
+
+- **"InitialArrows"** &rarr; True | False | Automatic   , *default: Automatic*    
+  Whether initial states should be drawn with an incoming arrow
+
+
+- **"InitialArrowStyle"** &rarr; _   , *default: Automatic*    
+  Styles applied to incoming arrows on initial states
+
+### FAGraph3D
+**Attributes:** Protected, ReadProtected
+- **FAGraph3D[*A*, *opts*&hellip;]** produces a Graph3D of the automaton *A* with options *opts*.
+  - *opts* can contain any option recognized by Graph3D.
+  - This is equivalent to Graph3D[*A*, *opts*] when *A* satisfies [FAExpressionQ](#FAExpressionQ).
+- **FAGraph3D** takes the same options as [FAGraph](#FAGraph).
+
+**Options:** "InitialVertexRules", "TerminalVertexRules", "InitialVertexStyle", "TerminalVertexStyle", "EpsilonEdgeStyle", "InitialArrows", "InitialArrowStyle", VertexLabels, EdgeLabels
+
+
 
 ### FAGraphQ
-**Attributes:** Protected
+**Attributes:** Protected, ReadProtected
 - **FAGraphQ[*G*]** yields True if *G* is a graph with a valid "Automaton" annotation.
 
 ### FAIntersection
-**Attributes:** Protected
-- **FAIntersection[*A1*, *A2*, ...]** returns a DFA for the intersection of the languages recognized by the *Ai*.
+**Attributes:** Protected, ReadProtected
+- **FAIntersection[*A<sub>1</sub>*, *A<sub>2</sub>*, &hellip;]** returns a DFA for the intersection of the languages of the automata *A<sub>*i*</sub>*.
+
+### FAMatchQ
+**Attributes:** Protected, ReadProtected
+- **FAMatchQ[*A*, {*a<sub>1</sub>*, *a<sub>2</sub>*, &hellip;}]** returns True if the finite automaton *A* accepts the string of symbols *a<sub>1</sub>* *a<sub>2</sub>* &hellip;
+- **FAMatchQ[*A*, "string"]** is equivalent to FAMatchQ[*A*, Characters["string"]]
 
 ### FAQ
-**Attributes:** Protected
-- **FAQ[*A*]** yields True if *A* is a valid representation of a finite automaton.
+**Attributes:** Protected, ReadProtected
+- **FAQ[*A*]** yields True if *A* is a valid representation of an NFA or DFA.
 
 ### FAReversal
-**Attributes:** Protected
-- **FAReversal[*A*]** returns an NFA recognizing the reversal of the language recognized by *A*.
+**Attributes:** Protected, ReadProtected
+- **FAReversal[*A*]** returns an NFA recognizing the reversal of the language of automaton *A*.
 
 ### FASymmetricDifference
-**Attributes:** Protected
-- **FASymmetricDifference[*A1*, *A2*]** returns a DFA for the symmetric difference of the languages recognized by *A1* and *A2*.
+**Attributes:** Protected, ReadProtected
+- **FASymmetricDifference[*A<sub>1</sub>*, *A<sub>2</sub>*]** returns a DFA for the symmetric difference of the languages of automata *A<sub>1</sub>* and *A<sub>2</sub>*.
 
 ### FAType
-**Attributes:** Protected
-- **FAType[*A*]** returns NFA if *A* is an NFA, or DFA if *A* is a DFA.
+**Attributes:** Protected, ReadProtected
+- **FAType[*A*]** returns DFA if *A* is a DFA, or NFA if *A* is an NFA.
 
 ### FAUnion
-**Attributes:** Protected
-- **FAUnion[*A1*, *A2*, ...]** returns a DFA for the union of the languages recognized by the *Ai*.
+**Attributes:** Protected, ReadProtected
+- **FAUnion[*A<sub>1</sub>*, *A<sub>2</sub>*, &hellip;]** returns a DFA for the union of the languages of the automata *A<sub>*i*</sub>*.
 
-### IDs
-**Attributes:** Listable, Protected
-- **IDs[*A*]** returns a list of state names for the DFA or NFA *A*.
-- **IDs[*A*, *prop*]** gives the IDs for states with property *prop*.
-  - Valid properties include: "Initial", "Terminal", and "Nonterminal".
-- **IDs[*A*, "Index"]** returns an association of state ids and their indices: <|id1 &rarr; 1, id2 &rarr; 2 ...|>.
+### FullSimplifyRE
+**Attributes:** Protected, ReadProtected
+- **FullSimplifyRE[*regex*]** attempts to simplify *regex* using pattern matching, along with more complex factorization and equivalence checking techniques.
+- **FullSimplifyRE** accepts many of the same options as FullSimplify.
 
-### IndexFA
-**Attributes:** Protected
-- **IndexFA[*A*]** returns an automaton isomorphic to *A*, where the ID of each state is its index.
+**Options:** ComplexityFunction, ExcludedForms
 
-### InitialQ
-**Attributes:** Protected
-- **InitialQ[*state*]** returns True if *state* is initial.
+- **ComplexityFunction** &rarr; "PostfixLength" | "InfixLength" | "AlphabeticLength" | "ExtendedAlphabeticLength" | _   , *default: RELength*    
+  Function used to determine expression complexity. This can be a function, or one of the following special values:
+  - *"PostfixLength":* [RELength](#RELength) with Method &rarr; "Postfix"
+  - *"InfixLength":* [RELength](#RELength) with Method &rarr; "Infix"
+  - *"AlphabeticLength":* [RELength](#RELength) with Method &rarr; "Alphabetic"
+  - *"ExtendedAlphabeticLength":* [RELength](#RELength) with Method &rarr; "ExtendedAlphabetic"
+
+### InactivateRE
+**Attributes:** HoldFirst, Protected, ReadProtected
+- **InactivateRE[*regex*]** wraps the heads [REUnion](#REUnion), [REConcat](#REConcat), and [REStar](#REStar) in *regex* with Inactive.
+  - The result is an inert regular expression that does not simplify automatically, but can still be used for most operations.
 
 ### LanguageAlphabet
-**Attributes:** Protected
+**Attributes:** Listable, Protected, ReadProtected
 - **LanguageAlphabet[*L*]** returns the alphabet of the language represented by *L*, where *L* can be any automaton or regex.
-  - For an automaton A, this is the union of the set of transition characters (which may include the empty string) over all states in A.
-  - For a regular expression r, this is the set of all characters in r, where a character is defined to be any subexpression expr of r such that
-      1. neither *expr* nor Head[*expr*] is one of [REUnion](#REUnion), [REConcat](#REConcat), [REClosure](#REClosure), [Regex](#Regex), or [EmptyLanguage](#EmptyLanguage) and
-      2. expr is not descended from any expression satisfying the previous rule.
+  - For an automaton *A*, this is the union of the set of transition characters (which may include the empty string) over all states in *A*.
+  - For a regular expression *r*, this is the set of all characters in *r*, where a character is defined to be any subexpression *expr* of *r* such that
+      1. neither *expr* nor Head[*expr*] is one of [REUnion](#REUnion), [REConcat](#REConcat), [REStar](#REStar), [RELiteral](#RELiteral), or [EmptyLanguage](#EmptyLanguage) and
+      2. *expr* is not descended from any expression satisfying the previous rule.
 
 **Options:** "IncludeEpsilon"
-- **"IncludeEpsilon"** &rarr; (True | False | Automatic), *default: Automatic*    
+
+- **"IncludeEpsilon"** &rarr; True | False | Automatic   , *default: Automatic*    
   - *True:* the returned list always includes [Epsilon](#Epsilon).
   - *False:* the returned list never includes [Epsilon](#Epsilon).
   - *Automatic:* the returned list only includes [Epsilon](#Epsilon) when the language contains explicit [Epsilon](#Epsilon)-productions.
 
-### LinearizeRE
-**Attributes:** Protected
-- **LinearizeRE[*regex*]** linearizes *regex* by indexing each character occurrence.
-- **LinearizeRE[*regex*, *i*]** linearizes *regex* by indexing each character occurrence, starting at *i*.
-- **LinearizeRE[*regex*, *i*, True]** returns a list {r', {a1, a2, ...}} where r' is the linearization of *regex*, and the ai are the alphabet of r'
+### LoadNotation
+**Attributes:** Protected, ReadProtected
+- **LoadNotation[]** can be evaluated to add the following extra notational forms for the RegularLanguages package:
+  - [REUnion](#REUnion)[*a*, *b*, &hellip;] formats as *a* | *b* | &hellip; (\\[VerticalSeparator], alias `Esc`|`Esc`). VerticalSeparator is redefined to reference [REUnion](#REUnion).
+  - [REConcat](#REConcat)[*a*, *b*, &hellip;] formats as a · b · &hellip; (\\[CenterDot], alias `Esc`.`Esc`). CenterDot is redefined to reference [REConcat](#REConcat).
+  - [REStar](#REStar)[*a*] formats as *a** (SuperStar[*a*], shortcut Ctrl + ^, * ). SuperStar is redefined to reference [REStar](#REStar).
+  - [Epsilon](#Epsilon) formats as ε, (\\[CurlyEpsilon], alias `Esc`ce`Esc`) and ε will be set to [Epsilon](#Epsilon) if it is not yet defined.
+  - [EmptyLanguage](#EmptyLanguage) formats as ∅ (\\[EmptySet], alias `Esc`es`Esc`), and ∅ will be set to [EmptyLanguage](#EmptyLanguage) if it is not yet defined.
+- **LoadNotation[]** is evaluated by default upon package load
+  - To disable this, set RegularLanguages\`[UseNotation](#UseNotation) = False before loading package.
+- [UnloadNotation](#UnloadNotation)[] removes all extra definitions and formatting rules.
+
+### MapRE
+**Attributes:** Protected, ReadProtected
+- **MapRE[*f*, *regex*]** returns *regex* with *f* applied to each literal.
+  - Literals are visited in the same order they appear in *regex*.
+  - Literals are unwrapped from [RELiteral](#RELiteral) before transformation: [RELiteral](#RELiteral)[*lit*, &hellip;] &rarr; *f*[*lit*].
+- **MapRE[*f*]** returns an operator form of MapRE that can be applied to regular expressions.
 
 ### MinimizeDFA
-**Attributes:** Protected
+**Attributes:** Protected, ReadProtected
 - **MinimizeDFA[*dfa*]** returns an equivalent DFA with the minimum number of states.
 
 **Options:** "StateNames"
-- **"StateNames"** &rarr; ("Indexed" | "Subset" | "SubsetUnion"), *default: "Indexed"*    
-  - *"Indexed":* The state ids of the new automaton are positive integers.
-  - *"Subset":* State ids are subsets of the ids of the original, representing equivalence classes in its [StatesPartition](#StatesPartition).
-  - *"SubsetUnion":* Like "Subset", but state ids are the unions of elements of subsets instead of the subsets themselves.
-    - Useful when the state ids of the original automaton are themselves lists.
+
+- **"StateNames"** &rarr; Automatic | "Subset" | "SubsetUnion"   , *default: Automatic*    
+  - *Automatic:* The returned DFA has states 1, 2, &hellip;.
+  - *"Subset":* [States](#States) are subsets of the ids of the original, representing equivalence classes in its [StatesPartition](#StatesPartition).
+  - *"SubsetUnion":* Like "Subset", but states are the unions of elements of subsets instead of the subsets themselves.
+     - Assumes the states of the original automaton are lists.
 
 ### MinimizeNFA
-**Attributes:** Protected
+**Attributes:** Protected, ReadProtected
 - **MinimizeNFA[*nfa*]** attempts to find an equivalent NFA with fewer states than the original.
-- If a NFA with fewer states is not found, the original is returned.
+  - If a NFA with fewer states is not fougd, the original is returned.
 
 **Options:** Method, MaxIterations
-- **Method** &rarr; ("Exhaustive" | "SimulatedAnnealing" | Automatic), *default: Automatic*    
-- The method to use for minimization.
+
+- **Method** &rarr; "Exhaustive" | "SimulatedAnnealing" | Automatic   , *default: Automatic*    
+  The method to use for minimization.
   - *"Exhaustive":* Deterministic, exhaustive search.
-    - State count of a Returned NFA is guarenteed to be minimal
-    - The poor scaling of this algorithm renders it unsuitable for all but the simplest inputs.
+      - State count of a Returned NFA is guarenteed to be minimal
+      - The poor scaling of this algorithm renders it unsuitable for all but the simplest inputs.
   - *"SimulatedAnnealing":* Probabilistic local search based on simulated annealing.
-    - Heuristic optimization suitable for small to medium NFAs.
-    - Non-deterministic. In general, obtaining the same result on different runs is not to be expected
+      - Heuristic optimization suitable for small to medium NFAs.
+      - Non-deterministic. In general, obtaining the same result on different runs is not to be expected
   - *Automatic:* Choose a suitable method automatically based on the number of prime grids identified.
 
 
-- **MaxIterations** &rarr; (_Integer?Positive), *default: 250*    
-- Maximum number of annealing steps to perform before returning when Method -> "SimulatedAnnealing".
+- **MaxIterations** &rarr; _Integer?Positive   , *default: 250*    
+  Maximum number of annealing steps to perform before returning when Method &rarr; "SimulatedAnnealing".
 
 ### NFA
-**Attributes:** Protected
+**Attributes:** Protected, ReadProtected
 - The head NFA represents a nondeterministic finite automaton.
-- **NFA[{*q1* &rarr; *t1*, *q2* &rarr; *t2*, ...}, {*q01*, *q02*, ...}, {*r1*, *r2*, ...}]** specifies an NFA with states *q1*, *q2*, ... initial states *q01*, *q02*, ..., final states *r1*, *r2*, ..., where each *ti* is a list of transitions {a1 &rarr; {s11, s12, ...}, a2 &rarr; {s21, s22, ...}, ...}, with keys that are symbols in the alphabet, and values which are lists of states.
-  - Not all transitions must be explicitly specified; for any symbol u for which no transition is given from state q, it is assumed δ(q, u) = { }.
+- **NFA[{*q<sub>1</sub>* &rarr; {*a<sub>1</sub>* &rarr; {*s<sub>11</sub>*, *s<sub>12</sub>*, &hellip;}, &hellip;}, &hellip;}, {*inits*&hellip;}, {*terms*&hellip;}]** specifies an NFA with initial states *inits*, terminal states *terms*, and transitions {*q<sub>1</sub>*, *a<sub>1</sub>*} &rarr; {*s<sub>11</sub>*, *s<sub>12</sub>*, &hellip;}, &hellip;, where *q<sub>*i*</sub>* and *s<sub>*ij*</sub>* are states, and *a<sub>*i*</sub>* are alphabet symbols.
+  - Not all transitions must be explicitly specified; on any symbol *a* for which there is no key in *q* &rarr; {&hellip;}, it is assumed {*q*, *a*} &rarr; { }.
   - Not all states must be explicitly specified; states without keys are assumed to have empty transition sets for all symbols.
-- **NFA[...][{*a1*, *a2*, *a3*, ...}]** returns True if the given NFA accepts the string of symbols *a1* *a2* *a3*...
-- **NFA[...][*symbs*, *All*]** returns the sequence of transitions on the given symbols as a list of sets of states.
-- **NFA[...][*symbs*, *spec*]** returns a subset of the transition sequence, where *spec* is any sequence specification.
+- *nfa*[{*a<sub>1</sub>*, *a<sub>2</sub>*, &hellip;}] returns True if the given NFA accepts the string of symbols *a<sub>1</sub>* *a<sub>2</sub>* &hellip;.
+- *nfa*["*string*"] is equivalent to *nfa*[Characters["*string*"]]
 
 ### NFAQ
-**Attributes:** Protected
+**Attributes:** Protected, ReadProtected
 - **NFAQ[*A*]** yields True if *A* is a valid NFA.
 
-### NFAState
-**Attributes:** Protected
-- **NFAState[*q*, <|*a* &rarr; {*q1*, *q2* ...}, ...|>]** represents the nonterminal state *q* in an NFA with transitions δ(*q*, *a*) = {*q1*, *q2*, ...}.
-  - Keys[*NFAState*[*q*, *trns*]] is equivalent to Keys[*trns*].
-  - Values[*NFAState*[*q*, *trns*]] is equivalent to Values[*trns*].
-- **NFAState[*q*, δ, True]** represents a terminal state.
-- **NFAState[*q*, δ, {*init*, *term*}]** represents a state which is initial if *init* is True, and terminal if *term* is True.
-- **NFAState[*q*, ...][*a*]** gives the transition δ(*q*, *a*). 
-
 ### NthFromLastNFA
-**Attributes:** Protected
-- **NthFromLastNFA[*n*]** returns an NFA accepting the language of strings over {"a", "b"} whose *n*-th from last character is "a"
-- **NthFromLastNFA[*n*, *c*, {*c1*, *c2*, ...}]** returns an NFA accepting the language of strings over {*c1*, *c2*, ...} whose *n*-th from last character is *c*.
+**Attributes:** Protected, ReadProtected
+- **NthFromLastNFA[*n*]** returns an NFA accepting the language of strings over {"a", "b"} whose *n*-th from last element is "a".
+- **NthFromLastNFA[*n*, *a*, {*symbs*&hellip;}]** returns an NFA accepting the language of strings over *symbs* whose *n*-th from last element is *a*.
+  - The smallest equivalent DFA has 2^n states.
 
 ### ParseRE
-**Attributes:** Protected
-- **ParseRE[*str*]** converts a regex in string form to an expression in terms of [REUnion](#REUnion), [REConcat](#REConcat), and [REClosure](#REClosure).
+**Attributes:** Protected, ReadProtected
+- **ParseRE[str]** converts a regex in string form to an expression in terms of [REUnion](#REUnion), [REConcat](#REConcat), and [REStar](#REStar).
 - Recognized constructs are (from greatest to least precedence)
   - Prefix "\\" escapes the next character.
   - Round parentheses "(" and ")" indicate grouping.
   - Postfix "*" is parsed as closure.
   - Juxtaposition is interpreted as concatenation.
   - Infix "|" is parsed as union.
-- All other characters are interpreted as string literals of length 1.
+- All other characters are interpreted as string literals.
 
-**Options:** "FullParseTree"
-- **"FullParseTree"** &rarr; (True | False), *default: False*    
-  - *False:* Result expression will use [REUnion](#REUnion), [REConcat](#REConcat), and [REClosure](#REClosure) as heads, which automatically reorder and simplify terms.
-  - *True:* Result expression will use Inactive[[REUnion](#REUnion)], Inactive[[REConcat](#REConcat)], and Inactive[[REClosure](#REClosure)].
-    - The active form can be recovered by calling Activate on the returned expression.
+**Options:** "InactiveHeads"
+
+- **"InactiveHeads"** &rarr; True | False | Full   , *default: False*    
+  - *False:* The parsed expression uses [REUnion](#REUnion), [REConcat](#REConcat), and [REStar](#REStar), which may reorder and simplify terms.
+  - *True:* The parsed expression uses Inactive[[REUnion](#REUnion)], Inactive[[REConcat](#REConcat)], and Inactive[[REStar](#REStar)] as heads.
+    - n-ary unions/concatenations and nested stars are flattened
+    - An active [RELiteral](#RELiteral) can be obtained by calling Activate on the returned expression.
+  - *Full:* The parsed expression uses Inactive[[REUnion](#REUnion)], Inactive[[REConcat](#REConcat)], and Inactive[[REStar](#REStar)] as heads, and union/concatenation are handled as binary operations.
+    - Nested stars are not flattened.
+    - n-ary unions/concatenations are nested with left-associativity.
 
 ### RandomDFA
-**Attributes:** Protected
-- **RandomDFA[*n*,*k*]** gives a random DFA with *n* states on an alphabet of *k* symbols.
+**Attributes:** Protected, ReadProtected
+- **RandomDFA[{*states*&hellip;}, {*symbols*&hellip;}]** creates a random DFA with states *states* and alphabet *symbols*.
+- **RandomDFA[*n*, *k*]** creates a random DFA with *n* states on an alphabet of *k* symbols.
+  - Either *n* or *k* can be a list, as in the above case.
+  - Default state ids are 1, 2, &hellip;, *n*
+  - Default symbols are "a", "b", &hellip; (ascii character range 97 to 97 + k) if *k* ≤ 26, or "x1", "x2", &hellip;, "xk" otherwise.
+  - When a function *f* is provided for the "StatesFunction" option, the state ids will be Array[*f*, *n*].
+  - When a function *g* is provided for the "AlphabetFunction" option, the alphabet will be Array[*g*, *k*].
 
-**Options:** "TerminalStates", "AlphabetFunction", "StatesFunction", "AllStatesReachable"
+**Options:** "TerminalStates", "InitialStates", "AlphabetFunction", "StatesFunction", "AllStatesReachable"
 
+- **"InitialStates"** &rarr; {*q*_} | Automatic   , *default: Automatic*    
+  Initial state of the returned DFA
+  - *{*q*_}:* initial state *q*.
+  - *Automatic:* Randomly selected initial state.
+
+
+- **"TerminalStates"** &rarr; _Integer | _Real | _List   , *default: 0.3*    
+  Terminal states in the returned DFA
+  - **l*_List:* terminal states are exactly the states in *l*.
+  - **m*_Integer:* *m* terminal states.
+  - **x*_Real:* Ceiling[*xn*] terminal states, where *n* is the total number of states.
+
+
+- **"StatesFunction"** &rarr; _   , *default: Automatic*    
+  Function to generate state names, applied to the list of states or Range[*n*]
+
+
+- **"AlphabetFunction"** &rarr; _   , *default: Automatic*    
+  Function to generate alphabet symbols, applied to the list of symbols or Range[*k*]
+
+
+- **"AllStatesReachable"** &rarr; True | False   , *default: True*    
+  Whether the returned DFA must form a (weakly) connected graph.
 
 ### RandomNFA
-**Attributes:** Protected
-- **RandomNFA[{*q1*, *q2*, ...}, {*a1*, *a2*, ...}]** creates a random NFA with states *q1*, *q2*, ... and alphabet *a1*, *a2*, ... .
+**Attributes:** Protected, ReadProtected
+- **RandomNFA[{*states*&hellip;}, {*symbols*&hellip;}]** creates a random NFA with states {* &hellip;states &hellip;* &hellip;} and alphabet {* &hellip;symbols &hellip;* &hellip;}.
 - **RandomNFA[*n*, *k*]** creates a random NFA with *n* states on an alphabet of *k* symbols.
-  - One of n or k can be a list, like in the above case.
-  - Default state ids are 1, 2, ... , n
-  - Default symbols are "a", "b", ... (ascii character range 97 to 97 + k) if k <= 26, or "x1", "x2", ... "xk" otherwise.
-  - If a function *f* is provided for the "StatesFunction"/"AlphabetFunction" option, the states/alphabet will be Array[*f*, *n*]/Array[*f*, *k*].
-- **RandomNFA[..., *maxn*, *maxk*]** specifies each state of the returned NFA should define transitions on no more than *maxk* symbols, and transition to no more than *maxn* states on any one symbol.
-  - Non-integer values given for maxn/maxk are interpreted as factors of the total number of states/symbols.
+  - Either *n* or *k* can be a list, as in the above case.
+  - Default state names are 1, 2, &hellip;, *n*
+  - Default symbols are "a", "b", &hellip; (ascii character range 97 to 97 + k) if *k* ≤ 26, or "x1", "x2", &hellip;, "xk" otherwise.
+  - When a function *f* is provided for the "StatesFunction" option, the state ids will be Array[*f*, *n*].
+  - When a function *g* is provided for the "AlphabetFunction" option, the alphabet will be Array[*g*, *k*].
+- **RandomNFA[&hellip;, *max<sub>*n*</sub>*, *max<sub>*k*</sub>*]** specifies each state of the returned NFA should transition to no more than *max<sub>*n*</sub>* states on any one symbol, and define transitions for no more than *max<sub>*k*</sub>* symbols.
+  - Non-integer values given for *max<sub>*n*</sub>* and *max<sub>*k*</sub>* are interpreted as factors of *n* and *k* respectively.
 
-**Options:** "EpsilonProbability", "TerminalStates", "InitialStates", "AllStatesReachable", "AlphabetFunction", "StatesFunction"
-- **"InitialStates"** &rarr; (_Integer | _?NumericQ), *default: 1*    
-  Number of initial states in the returned NFA
-  - *n_Integer:* n initial states.
-  - *x_?NumericQ:* Ceiling[x * n] initial states, where n is the total number of states.
+**Options:** "EpsilonFrequency", "TerminalStates", "InitialStates", "AllStatesReachable", "AlphabetFunction", "StatesFunction"
 
-- **"TerminalStates"** &rarr; (_Integer | _?NumericQ), *default: 0.3*    
-  Number of terminal states in the returned NFA
-  - *n_Integer:* n terminal states.
-  - *x_?NumericQ:* Ceiling[x * n] terminal states, where n is the total number of states.
+- **"InitialStates"** &rarr; _Integer | _Real | _List   , *default: 1*    
+  Initial states in the returned NFA
+  - **l*_List:* initial states are exactly the states in *l*.
+  - **m*_Integer:* *m* randomly selected initial states.
+  - **x*_Real:* Ceiling[*xn*] randomly selected initial states, where *n* is the total number of states.
 
-- **"StatesFunction"** &rarr; (_), *default: Automatic*    
-  Function to generate state names, applied to the list of states or Range[n]
 
-- **"AlphabetFunction"** &rarr; (_), *default: Automatic*    
-  Function to generate alphabet symbols, applied to the list of symbols or Range[k]
+- **"TerminalStates"** &rarr; _Integer | _Real | _List   , *default: 0.3*    
+  Terminal states in the returned NFA
+  - **l*_List:* terminal states are exactly the states in *l*.
+  - **m*_Integer:* *m* terminal states.
+  - **x*_Real:* Ceiling[*xn*] terminal states, where *n* is the total number of states.
 
-- **"AllStatesReachable"** &rarr; (True | False), *default: True*    
-  Whether the returned NFA must be connected.
 
-- **"EpsilonProbability"** &rarr; (_?(Between[{0, 1}])), *default: 0.01*    
-  The probability of a given state generating an Epsilon-transition.
+- **"StatesFunction"** &rarr; _   , *default: Automatic*    
+  Function to generate state names, applied to the list of states or Range[*n*]
+
+
+- **"AlphabetFunction"** &rarr; _   , *default: Automatic*    
+  Function to generate alphabet symbols, applied to the list of symbols or Range[*k*]
+
+
+- **"AllStatesReachable"** &rarr; True | False   , *default: True*    
+  Whether the returned NFA must form a (weakly) connected graph.
+
+
+- **"EpsilonFrequency"** &rarr; _?(Between[{0, 1}])   , *default: 0.1*    
+  The frequency with which states contain [Epsilon](#Epsilon)-transitions.
 
 ### RandomRE
-**Attributes:** Protected
-- **RandomRE[*n*, *k*]** returns a random regular expression on *n* symbols from an alphabet of length *k*.
-- **RandomRE[*n*,*k*,*p*]** returns a random regular expression of *n* symbols from an alphabet of length *k*, where *p* is the probability of grouping.
+**Attributes:** Protected, ReadProtected
+- **RandomRE[*n*, {*symbols*&hellip;}]** returns a random regular expression of length *n* on the given symbols.
+- **RandomRE[*n*, *k*]** returns a random regular expression of length *n* on an alphabet of *k* symbols.
+  - Default symbols are "a", "b", &hellip; (ascii character range 97 to 97 + k) if *k* ≤ 26, or "x1", "x2", &hellip;, "xk" otherwise.
 
-**Options:** "ClosureProbability", "UnionProbability", TimeConstraint, "AlphabetFunction", "EpsilonProbability"
+**Options:** "EpsilonFrequency", "StarFrequency", "InactiveHeads", "AlphabetFunction"
+
+- **"EpsilonFrequency"** &rarr; _?(Between[{0, 1}])   , *default: 0.01*    
+  The frequency with which [Epsilon](#Epsilon) should appear as a child of [REUnion](#REUnion).
 
 
-### REClosure
-**Attributes:** Protected
-- **REClosure[*e*]** represents a regex matching the closure of expression *e* with respect to concatenation. This is defined as the set {[Epsilon](#Epsilon), *e*, ee, eee, ...}.
+- **"StarFrequency"** &rarr; _?(Between[{0, 1}])   , *default: 0.5*    
+  The frequency with which subexpressions should be wrapped in [REStar](#REStar).
+
+
+- **"AlphabetFunction"** &rarr; _   , *default: Automatic*    
+  Function to generate alphabet symbols, applied to {* &hellip;symbols &hellip;* &hellip;} or Range[*k*]
+
+
+- **"InactiveHeads"** &rarr; True | False | Full   , *default: False*    
+  - *False:* The generated expression uses heads [REUnion](#REUnion), [REConcat](#REConcat), and [REStar](#REStar).
+    - These operators" may automatically simplify the generated expression, resulting in a length less than *n*.
+  - *True:* The generated expression uses heads Inactive[[REUnion](#REUnion)], Inactive[[REConcat](#REConcat)], and Inactive[[REStar](#REStar)].
+    - Length of generated expressions guarenteed to be exactly *n*.
+    - Generated expressions have flat n-ary unions/concatenations, and no nested stars.
+    - An active [RELiteral](#RELiteral) can be obtained by calling Activate on the returned expression.
+  - *Full:* The parsed expression uses Inactive[[REUnion](#REUnion)], Inactive[[REConcat](#REConcat)], and Inactive[[REStar](#REStar)] as heads with strictly binary union/concatenation.
+    - Generated expressions have nested binary unions/concatenations and arbitrarily nested stars.
+
+### ReachableStates
+**Attributes:** Protected, ReadProtected
+- **ReachableStates[{*q*}, *A*]** returns the set of states reachable from state *q* in finite automaton *A* by any sequence of transitions.
+- **ReachableStates[{*q<sub>1</sub>*, *q<sub>2</sub>*, &hellip;}, *A*]** returns ReachableStates[*q<sub>1</sub>*, *A*] ⋃ ReachableStates[*q<sub>2</sub>*, *A*] ⋃ &hellip;
+- **ReachableStates[*A*]** returns the set of states reachable from the initial states of the finite automaton *A*.
+- **ReachableStates[*states*, *trns*]** returns states reachable from $states according to the transitions *trns*.
+  - *trns* can be a [TransitionFunction](#TransitionFunction), or a list or association with elements *q* &rarr; *trns<sub>*q*</sub>*, where *trn<sub>*q*</sub>* is an association or list of rules of the form *a* &rarr; *res* such that *res* is the result of transitioning from *q* on symbol *a*.
+- **ReachableStates[&hellip;, {*a<sub>1</sub>*, *a<sub>2</sub>*, &hellip;}]** finds states reachable via any sequence of transitions restricted to the symbols *a<sub>1</sub>*, *a<sub>2</sub>*, &hellip;.
+
+**Options:** "TransitionType"
+
+- **"TransitionType"** &rarr; DFA | NFA | Automatic   , *default: Automatic*    
+  Used to specify whether the entries in a transition table are states or sets of states. Automatically set when the input is a NFA or DFA.
+  - *Automatic:* Assume nondeterministic transitions if entries in transition table are lists. This fails if state names are themselves lists.
 
 ### REConcat
-**Attributes:** Flat, OneIdentity, Protected
-- **REConcat[*e1*, *e2*, ...]** represents a regex matching the concatenation *e1* *e2* ... of the expressions *ei*.
-
-### Regex
-**Attributes:** Protected
-- **Regex[*x*]** represents the regular expression whose language is exactly {*x*}.
-- Used to indicate a literal outside a compound RE.
-
-### ReindexFA
-**Attributes:** Protected
-- **ReindexFA[*A*]** returns an automaton similar to *A*, but whose states are renamed with positive integers according to the order each is visited in a depth-first search from the initial states. By default, the returned automaton includes only those states which are reachable from the initial.
-- **ReindexFA[*A*, True]** returns the same, but also keeps disconnected components. The resulting automaton is isomorphic to *A*.
+**Attributes:** Flat, OneIdentity, Protected, ReadProtected
+- **REConcat[*e<sub>1</sub>*, *e<sub>2</sub>*, &hellip;]** represents a regular expression for the concatenation of the expressions *e<sub>*i*</sub>*.
+  - Matches the language *L*[*e<sub>1</sub>*]*L*[*e<sub>2</sub>*]&hellip;, where *L*[*e<sub>*i*</sub>*] denotes the language of *e<sub>*i*</sub>*.
+- *e<sub>1</sub>* · *e<sub>2</sub>* · *e<sub>3</sub>* · &hellip; is equivalent to REConcat[*e<sub>1</sub>*, *e<sub>2</sub>*, &hellip;] when extended notation is enabled.
+  - Aliases CenterDot, which is a system symbol with built-in formatting but no default meaning.
+  - Use \\[CenterDot] operator (alias `Esc`.`Esc`) for infix input.
+  - See [LoadNotation](#LoadNotation) for more details.
 
 ### RELength
-**Attributes:** Protected
-- **RELength[*regex*]** gives the number of characters in the regular expression *regex*. Note that the character [Epsilon](#Epsilon) is considered to have length 0.
+**Attributes:** Protected, ReadProtected
+- **RELength[*regex*]** gives the length of the regular expression *regex*.
+  - Equivalent to RELength[*regex*, "Postfix"]
+- **RELength[*regex*, "Postfix"]** counts the number of symbols in the postfix form of *regex*, or equivalently, the number of nodes in its syntax tree.
+- **RELength[*regex*, "Infix"]** gives the number of symbols in the standard infix form of *regex*, where "|" denotes union and juxtaposition denotes concatenation.
+  - Parentheses, operators, [Epsilon](#Epsilon), and [EmptyLanguage](#EmptyLanguage) are all counted.
+- **RELength[*regex*, "Alphabetic"]**: Counts the number of literals in *regex*, not including [Epsilon](#Epsilon) or [EmptyLanguage](#EmptyLanguage).
+
+**Options:** Method
+
+- **Method** &rarr; Automatic | "Postfix" | "Infix" | "Alphabetic" | "ExtendedAlphabetic"   , *default: Automatic*    
+  - *Automatic:* Same as "Postfix"
+  - *"Postfix":* Counts the number of symbols in the postfix form of *regex*, or equivalently, the number of nodes in its syntax tree
+  - *"Infix":* Counts the number of symbols in the infix form of *regex*, using "|" for union and juxtaposition for concatenation
+    - Includes parentheses, operators, [Epsilon](#Epsilon), and [EmptyLanguage](#EmptyLanguage).
+    - Equivalent to StringLength[ToString[*regex*]] when literals are single characters.
+  - *"Alphabetic":* Counts the number of literals in *regex*, not including [Epsilon](#Epsilon) or [EmptyLanguage](#EmptyLanguage)
+  - *"ExtendedAlphabetic":* Counts the number of literals in *regex*, including [Epsilon](#Epsilon) and [EmptyLanguage](#EmptyLanguage).
+
+### RELiteral
+**Attributes:** Protected, ReadProtected
+- **RELiteral** is a symbolic wrapper used to explicitly designate its contents as a literal regular expression.
+  - Any expression wrapped in RELiteral satisfies [REQ](#REQ).
+- **RELiteral[*x*]** represents regular expression whose language is {*x*}.
+- **RELiteral[*x*, *i*]** is a symbolic wrapper for an indexed literal. Its language is the same as RELiteral[*x*].
+  - Formatted as *x<sub>*i*</sub>*.
 
 ### REMatchQ
-**Attributes:** Protected
-- **REMatchQ[*expr*, *regex*]** returns True if *expr* is matched by *regex*.
+**Attributes:** Protected, ReadProtected
+- **REMatchQ[{*a<sub>1</sub>*, *a<sub>2</sub>*, &hellip;}, *regex*]** returns True if *regex* matches the string of symbols *a<sub>1</sub>* *a<sub>2</sub>* &hellip; .
+- **REMatchQ["string", *regex*]** returns True if *regex* matches the string *string*.
 - **REMatchQ[*regex*]** represents an operator form of REMatchQ.
 
-### RenameStates
-**Attributes:** Protected
-- **RenameStates[*A*, *f*]** returns an automaton isomorphic to *A*, with states {*f*[*q1*], *f*[*q2*], ...}, where {*q1*, *q2*, ...} are the states of *A*.
+### RemoveEpsilonTransitions
+**Attributes:** Protected, ReadProtected
+- **RemoveEpsilonTransitions[*nfa*]** returns an equivalent NFA with no [Epsilon](#Epsilon) transitions.
 
-### RENormal
-**Attributes:** Protected
-- **RENormal[*regex*]** converts the *regex* into an expression with head RegularExpression recognizing strings from the same language.
+### RemoveUnreachableStates
+**Attributes:** Protected, ReadProtected
+- **RemoveUnreachableStates[*A*]** returns an automaton whose states are [ReachableStates](#ReachableStates)[*A*], i.e. *A* with unreachable states removed.
+
+### RenameStates
+**Attributes:** Protected, ReadProtected
+- **RenameStates[*A*, *f*]** returns an automaton equivalent to *A*, with states {*f*[*q<sub>1</sub>*], *f*[*q<sub>2</sub>*], &hellip;}, where {*q<sub>1</sub>*, *q<sub>2</sub>*, &hellip;} are the original states of *A*.
+- **RenameStates[*A*, "Index"]** renames each state with its index in [States](#States)[*A*]
+- **RenameStates[*A*, "DepthFirstIndex"]** renames states with positive integers in depth-first search order.
+
+### REPower
+**Attributes:** Protected, ReadProtected
+- **REPower[*regex*, *n*]** generates a regular expression consisting of *n* copies of *regex* concatenated together.
 
 ### REQ
-**Attributes:** Protected
-- **REQ[*expr*]** yields True when *expr* has head [Regex](#Regex), or satisfies [CompoundREQ](#CompoundREQ).
-- **REQ[*expr*, *patt*]** gives True if *expr* is [EmptyLanguage](#EmptyLanguage) or [Epsilon](#Epsilon), or of the form [Regex](#Regex)[*x*] where *x* matches *patt*, or is a compound regex where every subexpression at level -1 that is not [EmptyLanguage](#EmptyLanguage) or [Epsilon](#Epsilon) matches *patt*.
+**Attributes:** Protected, ReadProtected
+- **REQ[*expr*]** yields True when *expr* is [EmptyLanguage](#EmptyLanguage) or [Epsilon](#Epsilon), or has head [RELiteral](#RELiteral), or satisfies [CompoundREQ](#CompoundREQ).
+- **REQ[*expr*, *patt*]** gives True if *expr* is [EmptyLanguage](#EmptyLanguage) or [Epsilon](#Epsilon), or of the form [RELiteral](#RELiteral)[x, &hellip;] where x matches patt, or satisfies [CompoundREQ](#CompoundREQ)[*expr*, *patt*].
 
-### RESymbolIndex
-**Attributes:** Protected
-- **RESymbolIndex[*r*, *i*]** is a symbolic wrapper representing the *i*-th occurrence of the symbol *r* in a linearized regex.
+### REStar
+**Attributes:** Protected, ReadProtected
+- **REStar[*e*]** represents a regular expression for closure of expression *e* with respect to concatenation.
+  - Matches the language {ε} ⋃ *L*[*e*] ⋃ *L*[*e*]*L*[*e*] ⋃ &hellip;, where *L*[*e*] denotes the language of *e*.
+- *e*<sup>*</sup> is equivalent to REStar[*e*] when extended notation is enabled.
+  - Aliases SuperStar, which is a system symbol with built-in formatting but no default meaning.
+  - Use shortcut Ctrl+^, * for postfix input.
+  - See [LoadNotation](#LoadNotation) for more details.
 
 ### REUnion
-**Attributes:** Flat, OneIdentity, Orderless, Protected
-- **REUnion[*e1*, *e2*, ...]** represents a regex matching the union *e1* | *e2* | ... of the expressions *ei*.
+**Attributes:** Flat, OneIdentity, Orderless, Protected, ReadProtected
+- **REUnion[*e<sub>1</sub>*, *e<sub>2</sub>*, &hellip;]** represents a regular expression for the union of expressions *e<sub>*i*</sub>*.
+  - Matches the language *L*[*e<sub>1</sub>*] ⋃ *L*[*e<sub>2</sub>*] ⋃ &hellip;, where *L*[*e<sub>*i*</sub>*] denotes the language of *e<sub>*i*</sub>*.
+- *e<sub>1</sub>* | *e<sub>2</sub>* | &hellip; is equivalent to REUnion[*e<sub>1</sub>*, *e<sub>2</sub>*, &hellip;] when extended notation is enabled.
+  - Aliases VerticalSeparator, which is a system symbol with built-in formatting but no default meaning.
+  - Use \\[VerticalSeparator] operator (alias `Esc`|`Esc`) for infix input.
+  - See [LoadNotation](#LoadNotation) for more details.
 
 ### SameAlphabetQ
-**Attributes:** Protected
-- **SameAlphabetQ[*A1*, *A2*, ...]** returns true if [LanguageAlphabet](#LanguageAlphabet)[*A1*], [LanguageAlphabet](#LanguageAlphabet)[*A2*], ... are equivalent as sets.
+**Attributes:** Protected, ReadProtected
+- **SameAlphabetQ[*A<sub>1</sub>*, *A<sub>2</sub>*, &hellip;]** returns true if [LanguageAlphabet](#LanguageAlphabet)[*A<sub>1</sub>*], [LanguageAlphabet](#LanguageAlphabet)[*A<sub>2</sub>*], &hellip; are equivalent as sets.
 
-### SetInitial
-**Attributes:** Protected
-- ***SetInitial*[*state*, *bool*]** returns a copy of *state* with the property that [InitialQ](#InitialQ)[*SetInitial*[*state*, *bool*]] = *bool*.
-- **SetInitial[*bool*]** is an operator form of SetInitial that can be applied to states.
+### SameLanguageQ
+**Attributes:** Protected, ReadProtected
+- **SameLanguageQ[*L<sub>1</sub>*, *L<sub>2</sub>*, &hellip;]** returns True if all *L<sub>*i*</sub>* are automata or regular expressions that describe the same language.
 
-### SetTerminal
-**Attributes:** Protected
-- ***SetTerminal*[*state*, *bool*]** returns a copy of *state* with the property that [TerminalQ](#TerminalQ)[*SetTerminal*[*state*, *bool*]] = *bool*.
-- **SetTerminal[*bool*]** is an operator form of SetTerminal that can be applied to states.
+### ScanRE
+**Attributes:** Protected, ReadProtected
+- **ScanRE[*f*, *regex*]** applies *f* to each literal in *regex*, returning Null.
+  - Literals are visited in the same order they appear in *regex*.
+  - For wrapped literals [RELiteral](#RELiteral)[*lit*, &hellip;], *f* is applied to *lit* itself.
 
 ### SimplifyRE
-**Attributes:** Protected
-- **SimplifyRE[*r*]** attempts to simplify the provided regular expression using simple pattern matching.
+**Attributes:** Protected, ReadProtected
+- **SimplifyRE[*regex*]** attempts to simplify *regex* using simple pattern matching.
 
 ### StateCount
-**Attributes:** Listable, Protected
+**Attributes:** Listable, Protected, ReadProtected
 - **StateCount[*A*]** returns the number of states in the automaton *A*.
-- **StateCount[*A*, *prop*]** returns the number of states in *A* with property *prop*.
-  - Valid properties include: "Initial", "Terminal", and "Nonterminal".
-
-### StateID
-**Attributes:** Listable, Protected
-- **StateID[*q*]** returns the id of *q*, where *q* is an expression with head [NFAState](#NFAState) or [DFAState](#DFAState).
-
-### StateQ
-**Attributes:** Protected
-- **StateQ[*expr*]** returns True if *expr* has head [NFAState](#NFAState) or [DFAState](#DFAState)
+- **StateCount[*A*, "prop"]** returns the number of states in *A* with the given property.
+  - See usage of [States](#States) for valid properties.
+- **StateCount["prop"]** represents an operator form of StateCount.
 
 ### States
-**Attributes:** Listable, Protected
-- **States[*A*]** returns an association <|id &rarr; state, ...|> of all states in the DFA or NFA *A*.
-- **States[*A*, "Values"]** returns a list {state1, state2, ...} of all states in the DFA or NFA *A*.
-- **States[*A*, *prop*]** returns an association <|id &rarr; state, ...|> of states with the property *prop*.
-  - Valid properties include  "Initial", "Terminal", and "Nonterminal".
-- **States[*A*, *prop*, "Values"]** returns a list of states with the property *prop*.
+**Attributes:** Listable, Protected, ReadProtected
+- **States[*A*]** returns a list of state names for the DFA or NFA *A*.
+- **States[*A*, "prop"]** returns the states of *A* with the given property.
+  - Valid properties include "Initial", "Noninitial", "Terminal", "Nonterminal", "Reachable", and "Unreachable".
+- **States["prop"]** represents an operator form of States.
 
 ### StatesPartition
-**Attributes:** Protected
-- **StatesPartition[*dfa*]** returns a list of partition blocks for the states of *dfa* according to the equivalence: p ~ q iff for all words w over the alphabet, reading w starting from state p ends in an accepting state exactly when the same is true starting from q.
-
-### StateSuccessors
-**Attributes:** Protected
-- **StateSuccessors[*q*]** returns a list of [IDs](#IDs) comprising the set of states to which *q* has an outgoing transition.
-- **StateSuccessors[*q*, {*a1*, *a2*, ...}]** returns the set of states to which *q* has an outgoing transition on one of the symbols *ai*.
+**Attributes:** Protected, ReadProtected
+- **StatesPartition[*dfa*]** returns a list of partition blocks for the states of *dfa* according to the equivalence relation: *p* ~ *q* iff there exists no string over the alphabet that is accepted starting from *p* but rejected starting from *q*, or rejected from *p* but accepted from *q*.
 
 ### SubsetFAQ
-**Attributes:** Protected
-- **SubsetFAQ[*A1*, *A2*]** returns True if the language recognized by automaton *A1* is a subset of the language recognized by automaton *A2*.
-- **SubsetFAQ[*A*, *A1*, *A2*, ...]** yields True if SubsetFAQ[*A*, *Ai*] is true for all *Ai*.
+**Attributes:** Protected, ReadProtected
+- **SubsetFAQ[*A<sub>1</sub>*, *A<sub>2</sub>*]** returns True if the language recognized by automaton A1 is a subset of the language recognized by automaton A2.
+- **SubsetFAQ[*A*, *A<sub>1</sub>*, *A<sub>2</sub>*, &hellip;]** yields True if SubsetFAQ[*A*, *A<sub>*i*</sub>*] is true for all *A<sub>*i*</sub>*.
 - **SubsetFAQ[*A*]** represents an operator form of SubsetFAQ that can be applied to an expression.
 
 ### SubsetLanguageQ
-**Attributes:** Protected
-- **SubsetLanguageQ[*L1*, *L2*]** yields True if the language recognized by automaton or regular expression *L1* is a subset of the language recognized by *L2*.
-- **SubsetLanguageQ[*L*, *L1*, *L2*, ...]** returns True if SubsetLanguageQ[*L*, *Li*] is True for all *Li*.
-- **SubsetLanguageQ[*L*]** represents an operator form of SubsetLanguageQ that can be applied to an expression. 
-
-### TerminalQ
-**Attributes:** Protected
-- **TerminalQ[*state*]** gives True if *state* is a terminal dfa or nfa *state*.
+**Attributes:** Protected, ReadProtected
+- **SubsetLanguageQ[*L<sub>1</sub>*, *L<sub>2</sub>*]** yields True if the language recognized by automaton or regular expression *L<sub>1</sub>* is a subset of the language recognized by *L<sub>2</sub>*.
+- **SubsetLanguageQ[*L*, *L<sub>1</sub>*, *L<sub>2</sub>*, &hellip;]** returns True if SubsetLanguageQ[*L*, *L<sub>*i*</sub>*] is True for all *L<sub>*i*</sub>*.
+- **SubsetLanguageQ[*L*]** represents an operator form of SubsetLanguageQ that can be applied to an expression.
 
 ### ToDFA
-**Attributes:** Protected
+**Attributes:** Protected, ReadProtected
 - **ToDFA[*dfa*]** returns the given DFA.
 - **ToDFA[*nfa*]** converts an NFA into an equivalent DFA.
 - **ToDFA[*nfa*, *alphabet*]** converts an NFA into an equivalent DFA with the given [LanguageAlphabet](#LanguageAlphabet).
 - **ToDFA[*regex*]** converts a regular expression into a DFA by way of an intermediate NFA.
 
 **Options:** Method, "StateNames"
-- **Method** &rarr; (Automatic | "Minimal"), *default: Automatic*    
+
+- **Method** &rarr; Automatic | "Minimal"   , *default: Automatic*    
   - *"Minimal":* Returned DFA will have minimal states. Equivalent to calling [MinimizeDFA](#MinimizeDFA) on the result.
-  - *Automatic:* Use the subset method for NFAs and regexes.
+  - *Automatic:* Use the subset method for NFAs and Regular Expressions.
 
 
-- **"StateNames"** &rarr; ("Index" | "Subset"), *default: "Index"*    
-  - *"Index":* Returned dfa has states with integer ids that correspond to their index in [States](#States)[dfa].
+- **"StateNames"** &rarr; Automatic | "Subset"   , *default: Automatic*    
+  - *Automatic:* The returned DFA has states 1, 2, &hellip;.
   - *"Subset":* state ids correspond to subsets of the original set of states.
-    - When constructed from an NFA with Method -> "Automatic", these are the states from the subset method.
+    - When constructed from an NFA with Method &rarr; "Automatic", these are the states from the subset method.
 
 ### ToNFA
-**Attributes:** Protected
-- **ToNFA[*A*]** converts the automaton *A* into an NFA.
+**Attributes:** Protected, ReadProtected
+- **ToNFA[*A*]** converts the automaton *A* into an *NFA*.
 - **ToNFA[*regex*]** converts the regular expression *regex* into an NFA.
 
 **Options:** Method
-- **Method** &rarr; ("Glushkov" | "Thompson"), *default: "Glushkov"*    
-- The algorithm to use when converting a regular expression to an NFA.
+
+- **Method** &rarr; "Glushkov" | "Thompson"   , *default: "Glushkov"*    
+  The algorithm to use when converting a regular expression to an NFA.
   - *"Glushkov":* Glushkov construction
-    - Results in an Epsilon-free NFA with n + 1 states, where n is the number of symbols in the original regular expression.
-  - *"Thompson":* Thompson construction
+    - Results in an [Epsilon](#Epsilon)-free NFA with *n* + 1 states, where *n* is the number of symbols in the original regular expression.
+  - *"Thompson":* Thompson construction.
+
+### ToPattern
+**Attributes:** Protected, ReadProtected
+- **ToPattern[*regex*]** converts *regex* into an equivalent pattern object.
+  - [EmptyLanguage](#EmptyLanguage) becomes (_ /; False)
+  - [Epsilon](#Epsilon) becomes PatternSequence[]
 
 ### ToRE
-**Attributes:** Protected
+**Attributes:** Protected, ReadProtected
 - **ToRE[*A*]** converts the automaton *A* to an equivalent regular expression.
+
+**Options:** "EliminationOrder", "LengthMethod", "SimplificationFunction"
+
+- **"EliminationOrder"** &rarr; Automatic | "ShortestFirst" | "LongestFirst" | "LeastConnectedFirst" | "MostConnectedFirst" | "ForwardOrder" | "ReverseOrder" | "RandomOrder" | *perm*_List   , *default: Automatic*    
+  The heuristic used to determine the order in which states are eliminated while building the final expression.
+  - *Automatic:* Automatically select states to favor a shorter expression
+  - *"ShortestFirst":* Eliminate states associated with sorter expressions first
+  - *"LongestFirst":* Eliminate states associated with longer expressions first
+  - *"LeastConnectedFirst":* Eliminate states with fewer incoming / outgoing transitions first
+  - *"MostConnectedFirst":* Eliminate states with more incoming / outgoing transitions first
+  - *"ForwardOrder":* Eliminate states in the order they appear in [States](#States)[*A*]
+  - *"ReverseOrder":* Eliminate states in reverse order of appearance in [States](#States)[*A*]
+  - *perm*_List : Eliminate states in the given order (*perm* must be a valid permutation of 1, 2, &hellip;, [StateCount](#StateCount)[*A*])
+
+
+- **"LengthMethod"** &rarr; Automatic | "Postfix" | "Infix" | "Alphabetic" | "ExtendedAlphabetic"   , *default: Automatic*    
+  Method used to measure regular expression length. Takes the same values as Method option of [RELength](#RELength). Only relevant when "ReductionOrder" is "ShortestFirst", "LongestFirst", or Automatic.
+
+
+- **"SimplificationFunction"** &rarr; _   , *default: Automatic*    
+  Function applied to intermediate regular expressions after each reduction step. * None: disables simplification.
+
+### ToStringPattern
+**Attributes:** Protected, ReadProtected
+- **ToStringPattern[*regex*]** converts *regex* into an equivalent string pattern object.
+  - ToStringPattern[*regex*] produces output suitable for use anywhere a StringExpression is expected.
+- **ToStringPattern[*regex*, *form*]** uses ToString[*literal*, *form*] to convert literals in *regex* to strings.
 
 **Options:** Method
 
+- **Method** &rarr; "RegularExpression" | "StringExpression"   , *default: "StringExpression"*    
+  - *"RegularExpression":* Return a RegularExpression
+  - *"StringExpression":* Return a StringExpression
+
+### ToTaggedEdges
+**Attributes:** Protected, ReadProtected
+- **ToTaggedEdges[*A*]** converts *A* to a list with one edge DirectedEdge[*q<sub>1</sub>*, *q<sub>2</sub>*, *a*] for each transition from state *q<sub>1</sub>* to state *q<sub>2</sub>* on symbol *a* in *A*.
+
+### TransitionFunction
+**Attributes:** Protected, ReadProtected
+- **TransitionFunction[*A*]** returns a TransitionFunction for the automaton *A*.
+- **TransitionFunction[*dfa*][*q*, *a*]** returns the state reached by transitioning from state *q* on symbol *a*, or Undefined if no such transition exists.
+- **TransitionFunction[*nfa*][*q*, *a*]** returns the list of states reached by transitioning from state *q* on symbol *a*, or {} if no such transition exists.
+- **TransitionFunction[&hellip;][{*q*, *a*}]** is equivalent to TransitionFunction[&hellip;][*q*, *a*].
+- **TransitionFunction** automatically maps over lists of states and symbols:
+  - *tf*[{*q<sub>1</sub>*, *q<sub>2</sub>*, &hellip;}, *a*] returns the list {*tf*[*q<sub>1</sub>*, a], *tf*[*q<sub>2</sub>*, a] &hellip;}.
+  - *tf*[*q*, {*a<sub>1</sub>*, *a<sub>2</sub>*, &hellip;}] returns the list {*tf*[*q*, *a<sub>1</sub>*], *tf*[*q*, *a<sub>2</sub>*] &hellip;}.
+  - *tf*[{*q<sub>1</sub>*, *q<sub>2</sub>*, &hellip;}, {*a<sub>1</sub>*, *a<sub>2</sub>*, &hellip;}] returns the array {{*tf*[*q<sub>1</sub>*, *a<sub>1</sub>*], *tf*[*q<sub>1</sub>*, *a<sub>2</sub>*], &hellip;}, {*tf*[*q<sub>2</sub>*, *a<sub>1</sub>*], *tf*[*q<sub>2</sub>*, *a<sub>2</sub>*], &hellip;}, &hellip;}.
+  - Symbols or states which are themselves lists may be wrapped in Key to avoid threading, as in *tf*[Key[{&hellip;}], Key[{&hellip;}]].
 
 ### Transitions
-**Attributes:** Protected
-- **Transitions[*dfastate*]** gives the transition table for a dfa state as the association <|a1 &rarr; q1, ...|>, where ai is a character in the input alphabet, and qi is the id of δ(*dfastate*, ai)].
-- **Transitions[*nfastate*]** gives the transition table for an nfa state as the association <|a1 &rarr; listi, ...|>, where ai is a character in the input alphabet, and listi is the list {q1, q2, ...} of state ids corresponding to δ(*nfastate*, ai)].
-- ***Transitions*[*q*, *spec*...]** is equivalent to Lookup[*Transitions*[*q*], *spec*...] if *q* is an explicit DFA or NFA state.
-- **Transitions[{*q1*, *q2*, ...}, *spec*...]** is equivalent to Lookup[{Transitions[*q1*], Transitions[*q2*], ...}, *spec*...], provided all *qi* have head [NFAState](#NFAState), or all *qi* have head [DFAState](#DFAState).
+**Attributes:** Listable, Protected, ReadProtected
+- **Transitions[*dfa*]** returns the transitions of *dfa* as a nested association of the form <|*q* &rarr; <|*a* &rarr; *r*, &hellip;|>, &hellip;|>, where *q* and *r* are states and *a* an alphabet symbol.
+- **Transitions[*nfa*]** returns the transitions of *nfa* as a nested association of the form <|*q* &rarr; <|*a* &rarr; {*r<sub>1</sub>*, *r<sub>2</sub>*, &hellip;}, &hellip;|>, &hellip;|>, where *q* and *r<sub>*i*</sub>* are states and *a* an alphabet symbol.
+- **Transitions[*tf*]** returns transitions for the [TransitionFunction](#TransitionFunction) *tf*.
 
-### TransitiveClosure
-**Attributes:** Protected
-- **TransitiveClosure[*q*, *A*]** returns the transitive closure of state *q* in automaton *A*.
-- **TransitiveClosure[{*q1*, *q2*, ...}, *A*]** returns the union (TransitiveClosure[*q2*,*A*] ⋃ TransitiveClosure[*q2*, *A*] ⋃ ...)
-- **TransitiveClosure[*A*]** returns the transitive closure of the initial states of automaton *A*.
-- **TransitiveClosure[*states*, *transitions*]** returns the transitive closure of the given *states* according to the given transition specifications. The parameter *transitions* should be an association or list of rules of the form q &rarr; t, where q is a state id, and t is the transition table for q as an association or list of rules.
-- **TransitiveClosure[..., {*a1*, *a2*, ...}]** gives the transitive closure over the set of symbols *a1*, *a2*, ...
+### TransitionSequence
+**Attributes:** Protected, ReadProtected
+- **TransitionSequence[*nfa*, {*a<sub>1</sub>*, *a<sub>2</sub>*, &hellip;}]** returns the sequence of transitions for the input string *a<sub>1</sub>* *a<sub>2</sub>* &hellip; as a list of lists of states.
+- **TransitionSequence[*dfa*, {*a<sub>1</sub>*, *a<sub>2</sub>*, &hellip;}]** returns the sequence of transitions for the input string *a<sub>1</sub>* *a<sub>2</sub>* &hellip; as a list of states.
+- **TransitionSequence[*A*, "string"]** is equivalent to TransitionSequence[*A*, Characters["*string*"]]
+- **TransitionSequence[*spec*&hellip;, *seq*]** returns the subsequence of TransitionSequence[spec &hellip;] specified by *seq* using the standard sequence specification.
+
+### UniversalFAQ
+**Attributes:** Protected, ReadProtected
+- **UniversalFAQ[*A*]** yields True if *A* is an automaton which accepts all strings over its alphabet.
+
+### UnloadNotation
+**Attributes:** Protected, ReadProtected
+- **UnloadNotation[]** removes the extra notational definitions from the RegularLanguages package introduced by [LoadNotation](#LoadNotation).
+
+### UpdateFA
+**Attributes:** Protected, ReadProtected
+- **UpdateFA[*A*, *prop* &rarr; *val*]** updates the property *prop* in the finite automaton *A*.
+- **UpdateFA[*A*, *prop<sub>1</sub>* &rarr; *val<sub>1</sub>*, *prop<sub>2</sub>* &rarr; *val<sub>2</sub>*, &hellip;]** updates multiple properties of *A* at once.
+
+- Recognized properties are:
+  - "Initial" &rarr; *inits*: Set initial states of *A* to *inits*.
+  - "Terminal" &rarr; *terms*: Set terminal states of *A* to *terms*
+  - "Alphabet" &rarr; {*symbs* &hellip;}: Set the language alphabet of *A*.
+    - If there are transitions defined on symbols not in {*symbs* &hellip;}, these symbols will still be included in [LanguageAlphabet](#LanguageAlphabet)[*A*].
+    - Not supported for DFAs.
+  - "Transitions" &rarr; {{*q*, *a*} &rarr; *x*, &hellip;}: Set the transition from state *q* on symbol *a* to be *x*.
+    - If *A* is a DFA, *x* should be a state.
+    - If *A* is an NFA, *x* should be a list of states.
+  - "AddTransitions" &rarr; {{*q*, *a*} &rarr; *xs*, &hellip;}: Add transitions from state *q* on symbol *a* to *xs*.
+    - *xs* should be a list of states.
+    - Not supported for DFAs.
+  - "RemoveTransitions" &rarr; {{*q*, *a*} &rarr; *xs*, &hellip;}: Remove transitions from state *q* on symbol *a* to *xs*.
+    - *xs* should be a list of states.
+    - {*q*, *a*} &rarr; All removes all transitions from *q* on *a*.
+    - Not supported for DFAs.
 
 ### UseNotation
-**Attributes:** Protected
-- **UseNotation[*use*]** can be evaluated to add or remove extra notational forms.
-- **UseNotation[True]** is evaluated automatically on package load, and makes the following changes:
-  - [REUnion](#REUnion)[*a*, *b*,...] formats as *a* | *b* | ... (\\[*VerticalSeparator*], alias `Esc`|`Esc`). *VerticalSeparator* is redefined to alias [REUnion](#REUnion).
-  - [REConcat](#REConcat)[*a*, *b*,...] formats as *a* · *b* · ... (\\[*CenterDot*], alias `Esc`.`Esc`). *CenterDot* is redefined to alias [REConcat](#REConcat).
-  - [REClosure](#REClosure)[*a*] formats as *a** (SuperStar[*a*], shortcut Ctrl + ^, * ). SuperStar is redefined to alias [REClosure](#REClosure).
-  - [Epsilon](#Epsilon) formats as ε, (\\[*CurlyEpsilon*], alias `Esc`ce`Esc`) and ε will be set to [Epsilon](#Epsilon) if it is not yet defined.
-  - [EmptyLanguage](#EmptyLanguage) formats as ∅ (\\[*EmptySet*], alias `Esc`es`Esc`), and ∅ will be set to [EmptyLanguage](#EmptyLanguage) if it is not yet defined.
-- **UseNotation[False]** removes all extra definitions and formatting rules.
+- **UseNotation** is a flag that controls whether [LoadNotation](#LoadNotation)[] will be called on package load.
+- Can be set before getting package (e.g. Block[{RegularLanguages\`UseNotation = False}, << RegularLanguages\`]) to disable extended notation.
+- Once package has been loaded, use [UnloadNotation](#UnloadNotation)[] to clear notation-related definitions.
 
 # References 
 [Tsyganov, Andrey. (2012). Local Search Heuristics for NFA State Minimization Problem. Int'l J. of Communications,
 Network and System Sciences. 05. 638-643. 10.4236/ijcns.2012.529074.](https://www.researchgate.net/publication/272672491_Local_Search_Heuristics_for_NFA_State_Minimization_Problem)
 
-[Kameda, Tiko & Weiner, Peter. (1970). On the State Minimization of Nondeterministic Finite Automata. Computers, IEEE Transactions on. 100. 617 - 627. 10.1109/T-C.1970.222994. ](https://www.researchgate.net/publication/3045459_On_the_State_Minimization_of_Nondeterministic_Finite_Automata)
+[Kameda, Tiko & Weiner, Peter. (1970). On the State Minimization of Nondeterministic Finite Automata. Computers, IEEE Transactions on. 100. 617 - 627. 10.1109/T-C.1970.222994.](https://www.researchgate.net/publication/3045459_On_the_State_Minimization_of_Nondeterministic_Finite_Automata)
 
 [Han, Yo-Sub & Wood, Derick. (2007). Obtaining shorter regular expressions from finite-state automata. Theoretical Computer Science. 370. 110-120. 10.1016/j.tcs.2006.09.025.](https://www.researchgate.net/publication/222648275_Obtaining_shorter_regular_expressions_from_finite-state_automata) 
 
 [Allauzen, Cyril & Mohri, Mehryar. (2006). A Unified Construction of the Glushkov, Follow, and Antimirov Automata. 110-121. 10.1007/11821069_10.](https://www.researchgate.net/publication/220975761_A_Unified_Construction_of_the_Glushkov_Follow_and_Antimirov_Automata)
+
+[Hermann Gruber, Jonathan Lee, Jeffrey Shallit: Enumerating regular expressions and their languages, arXiv:1204.4982 [cs.FL]](https://www.researchgate.net/publication/224812677_Enumerating_regular_expressions_and_their_languages)
