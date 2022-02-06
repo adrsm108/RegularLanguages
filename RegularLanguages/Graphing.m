@@ -14,7 +14,6 @@
 
 Package["RegularLanguages`"]
 
-(*$dfaInitColor =*)
 $epsilonGray = GrayLevel[0.5`, 0.7`];
 
 PackageExport["ToTaggedEdges"]
@@ -41,33 +40,37 @@ ToTaggedEdges[A_?NFAQ] :=
 
 PackageExport["FAGraph"]
 FAGraph::usage = "\
-FAGraph[A$, opts$$] produces a Graph of the automaton A$ with options opts$$.
+FAGraph[A$, opts$$] produces a Graph of the automaton A$ with options opts$.
 * opts$ can contain any option recognized by Graph.
-* This is equivalent to Graph[A$, opts$$] when A$ satisfies FAExpressionQ.
+* This is equivalent to Graph[A$, opts$] when A$ satisfies FAExpressionQ.
 
 Options:
+'DisableStyling' -> True | False
+When True, the returned graph has no styling applied.
+
 'InitialVertexStyle' -> _
-Styles applied to initial state vertices.
+Styles applied to initial state vertices
 
 'InitialVertexRules' -> _
-List of annotation rules applied to initial state vertices.
+List of annotation rules applied to initial state vertices
 * Overrides 'InitialVertexStyle' option in favor of VertexStyle rule.
 
 'TerminalVertexStyle' -> _
-Styles applied to terminal state vertices.
+Styles applied to terminal state vertices
 
 'TerminalVertexRules' -> _
-List of annotation rules applied to terminal state vertices.
+List of annotation rules applied to terminal state vertices
 * Overrides 'TerminalVertexStyle' option in favor of VertexStyle rule.
 
 'EpsilonEdgeStyle' -> _
-Styles applied to edges representing Epsilon-transitions.
+Styles applied to edges representing Epsilon-transitions
 
 'InitialArrows' -> True | False | Automatic
-Whether initial states should be drawn with an incoming arrow.
+Whether initial states should be drawn with an incoming arrow
 
-'InitialArrowEdgeRules' -> _
-List of annotation rules applied to the incoming arrows on initial states.";
+'InitialArrowStyle' -> _
+Styles applied to incoming arrows on initial states
+";
 Options[FAGraph] =
   {
     "DisableStyling" -> False,
@@ -81,163 +84,228 @@ Options[FAGraph] =
     VertexLabels -> Automatic,
     EdgeLabels -> Automatic
   };
-OptionChecks[FAGraph] = {"InitialArrows" -> True | False | Automatic};
+OptionChecks[FAGraph] =
+  {
+    "InitialArrows" -> True | False | Automatic,
+    "DisableStyling" -> True | False
+  };
 FAGraph[A_?FAGraphQ, opts___] := FAGraph[FAExpression @ A, opts];
-FAGraph[A_?FAExpressionQ, opts : OptionsPattern[{FAGraph, Graph}]?(validQ @ FAGraph)] :=
+FAGraph[A_?FAExpressionQ, opts : CheckedOptions[{FAGraph, Graph}, FAGraph]] :=
   With[
     {
       n = StateCount @ A,
-      inits = StateNames[A, "Initial"],
-      verts = StateIndices @ A,
-      edges = Catenate[toEdges /@ StateList @ A],
+      inits = States[A, "Initial"],
+      verts = stateIndices @ A,
+      edges =
+        Catenate @ KeyValueMap[
+          With[{type = FAType @ A},
+            toEdges[type, ##]&
+          ],
+          Transitions @ A
+        ],
       isDFA = MatchQ[FAType @ A, DFA],
-      perfGoal = unlessAutomatic[OptionValue @ PerformanceGoal, "Quality"],
+      perfGoal =
+        UnlessAutomatic[OptionValue @ PerformanceGoal, "Quality"],
       initEdgeRules =
         {
-          EdgeStyle -> unlessAutomatic[OptionValue @ "InitialArrowStyle", $epsilonGray],
-          (*          EdgeStyle -> {Arrowheads[{{-1, Automatic, {Graphics[], 0.5}}, Automatic}]},*)
+          EdgeStyle -> UnlessAutomatic[OptionValue @ "InitialArrowStyle", $epsilonGray],
           EdgeLabels -> None
         },
-      epsilonEdgeStyle = unlessAutomatic[OptionValue @ "EpsilonEdgeStyle", $epsilonGray]
+      epsilonEdgeStyle =
+        UnlessAutomatic[OptionValue @ "EpsilonEdgeStyle", $epsilonGray]
     },
-    With[{showInitArrows = unlessAutomatic[OptionValue @ "InitialArrows", Length @ edges <= 150]},
-      Annotate[
-        If[OptionValue @ "DisableStyling",
-          Graph[ Keys @ verts, edges ],
-          Graph[
-            Keys @ verts,
-            If[showInitArrows,
-              Join[edges, DirectedEdge[#, #, "Start"]& /@ inits],
-              edges
-            ],
-            filteredOptionSequence[{opts}, Graph, FAGraph],
-            PerformanceGoal -> perfGoal,
-            VertexStyle ->
-              If[isDFA,
-                Directive[
-                  RGBColor[0.475184`, 0.592896`, 0.919488`],
-                  EdgeForm @ RGBColor[0.275184`, 0.392896`, 0.719488`]
-                ],
-                Directive[
-                  RGBColor[0.970000`, 0.606000`, 0.081000`],
-                  EdgeForm @ RGBColor[0.431111`, 0.269333`, 0.0360000`]
-                ]
+    {
+      showInitArrows =
+        UnlessAutomatic[OptionValue @ "InitialArrows", Length @ edges <= 150]
+    },
+    Annotate[
+      If[OptionValue @ "DisableStyling",
+        Graph[ Keys @ verts, edges ],
+        Graph[
+          Keys @ verts,
+          If[showInitArrows,
+            Join[edges, DirectedEdge[#, #, "Start"] & /@ inits],
+            edges
+          ],
+          filteredOptionSequence[{opts}, Graph, FAGraph],
+          PerformanceGoal -> perfGoal,
+          GraphLayout ->
+            getGraphProperty[A, GraphLayout, Automatic],
+          VertexStyle ->
+            If[isDFA,
+              Directive[
+                RGBColor[0.475184`, 0.592896`, 0.919488`],
+                EdgeForm @ RGBColor[0.275184`, 0.392896`, 0.719488`]
               ],
-            VertexSize ->
+              Directive[
+                RGBColor[0.970000`, 0.606000`, 0.081000`],
+                EdgeForm @ RGBColor[0.431111`, 0.269333`, 0.0360000`]
+              ]
+            ],
+          VertexSize ->
+            getGraphProperty[
+              A,
+              VertexSize,
               Which[
                 n <= 1, 1,
-                n <= 5, {"Scaled", 0.15`},
+                n <= 5, 0.3`,
                 n <= 10, 0.4`,
                 n <= 20, 0.5`,
                 n <= 30, 0.6`,
                 True, 0.7`
-              ],
-            VertexLabels ->
-              unlessAutomatic[OptionValue @ VertexLabels,
-                Placed[
-                  "Name",
-                  If[StateCount @ A <= 25, Center, Tooltip],
-                  Which[ (* lists of lists are common, we don't want sporadic matrix formatting *)
-                    MatrixQ[#], Style /@ #,
-                    MatchQ[#, _Style] && MatrixQ @ First[#], MapAt[Map @ Style, #, 1],
-                    True, #
-                  ]&
-                ]
-              ],
-            VertexLabelStyle -> {Directive[AutoSpacing -> False]},
-            EdgeStyle ->
-              unlessAutomatic[OptionValue @ EdgeStyle,
-                Directive[GrayLevel[0, 0.7`], Arrowheads @ Small]
-              ],
-            EdgeLabels ->
-              Placed[
-                "EdgeTag",
-                If[Length @ edges <= 150, {0.3, {.5, .5}}, Tooltip],
-                automatonEdgeLabel[OptionValue @ "Background"]
-              ],
-            AnnotationRules ->
+              ]
+            ],
+          VertexLabels ->
+            Replace[
+              OptionValue @ VertexLabels,
               {
-                toAlternatives @ inits ->
-                  unlessAutomatic[OptionValue@"InitialVertexRules",
-                    {
-                      VertexStyle ->
-                        unlessAutomatic[OptionValue@"InitialVertexStyle",
-                          If[isDFA,
-                            Directive[
-                              RGBColor[1`, 0.5`, 0.5`],
-                              EdgeForm @ RGBColor[0.666666`, 0.333333`, 0.333333`]
-                            ],
-                            Directive[
-                              RGBColor[0.181864`, 0.666640`, 0.869788`],
-                              EdgeForm @ RGBColor[0.045480`, 0.314800`, 0.427660`]
-                            ]
+                Automatic ->
+                  Placed[
+                    "Name",
+                    If[StateCount @ A <= 25, Center, Tooltip],
+                    vertexLabelFunction
+                  ],
+                Placed[Automatic, pos_, f_ : vertexLabelFunction] :>
+                  Placed[
+                    "Name",
+                    pos,
+                    vertexLabelFunction
+                  ]
+              }
+            ],
+          VertexLabelStyle ->
+            {
+              Directive[AutoSpacing -> False]
+            },
+          EdgeStyle ->
+            UnlessAutomatic[OptionValue @ EdgeStyle,
+              Directive[GrayLevel[0, 0.7`], Arrowheads @ Small]
+            ],
+          EdgeLabels ->
+            Replace[
+              OptionValue @ EdgeLabels,
+              {
+                Automatic ->
+                  Placed[
+                    "EdgeTag",
+                    {0.3, {.5, .5}},
+                    edgeLabelFunction @ OptionValue @ "Background"
+                  ],
+                Placed[
+                  Automatic,
+                  pos_,
+                  f : edgeLabelFunction @ OptionValue @ "Background"
+                ] :>
+                  Placed["EdgeTag", pos, f]
+              }
+            ],
+          AnnotationRules ->
+            {
+              toAlternatives @ inits ->
+                UnlessAutomatic[OptionValue @ "InitialVertexRules",
+                  {
+                    VertexStyle ->
+                      UnlessAutomatic[OptionValue @ "InitialVertexStyle",
+                        If[isDFA,
+                          Directive[
+                            RGBColor[1`, 0.5`, 0.5`],
+                            EdgeForm @ RGBColor[0.666666`, 0.333333`, 0.333333`]
+                          ],
+                          Directive[
+                            RGBColor[0.181864`, 0.666640`, 0.869788`],
+                            EdgeForm @ RGBColor[0.045480`, 0.314800`, 0.427660`]
                           ]
                         ]
-                    }
-                  ] ,
-                toAlternatives @ StateNames[A, "Terminal"] ->
-                  unlessAutomatic[OptionValue@"TerminalVertexRules",
-                    {
-                      VertexShapeFunction -> doubleCircle[0.3],
-                      VertexStyle -> unlessAutomatic[OptionValue @ "TerminalVertexStyle", {}]
-                    }
-                  ],
-                If[isDFA,
-                  Nothing,
-                  DirectedEdge[_, _, {Epsilon}] -> {
-                    EdgeStyle -> epsilonEdgeStyle,
-                    EdgeLabels ->
-                      Placed[
-                        "EdgeTag",
-                        If[Length @ edges <= 150, {0.3, {.5, .5}}, Tooltip],
-                        automatonEdgeLabel[OptionValue @ "Background", epsilonEdgeStyle]
                       ]
                   }
+                ] ,
+              toAlternatives @ States[A, "Terminal"] ->
+                UnlessAutomatic[OptionValue@"TerminalVertexRules",
+                  {
+                    VertexShapeFunction -> doubleCircle[0.3],
+                    VertexStyle -> UnlessAutomatic[OptionValue @ "TerminalVertexStyle", {}]
+                  }
                 ],
-                If[!showInitArrows,
-                  Nothing,
-                  If[perfGoal === "Quality",
-                    If[TrueQ@Quiet@Lookup[OptionValue@GraphLayout, "Dimension"] === 3,
-                      DirectedEdge[x_, _, "Start"] ->
-                        {
-                          EdgeStyle -> {Arrowheads[{{-1, Automatic, {Graphics[], 0.5}}, Small}], $epsilonGray},
-                          Splice @ initEdgeRules
-                        },
-                      DirectedEdge[x_, _, "Start"] :>
-                        {
-                          Splice @ initEdgeRules,
-                          EdgeShapeFunction ->
-                            (Arrow[
+              If[isDFA,
+                Nothing,
+                DirectedEdge[_, _, {Epsilon}] -> {
+                  EdgeStyle -> epsilonEdgeStyle,
+                  EdgeLabels ->
+                    Placed[
+                      "EdgeTag",
+                      If[Length @ edges <= 150, {0.3, {.5, .5}}, Tooltip],
+                      edgeLabelFunction[OptionValue @ "Background", epsilonEdgeStyle]
+                    ]
+                }
+              ],
+              If[! showInitArrows,
+                Nothing,
+                If[perfGoal === "Quality",
+                  If[
+                    Quiet @ Lookup[
+                      OptionValue @ GraphLayout,
+                      "Dimension"
+                    ] === 3,
+                    DirectedEdge[x_, _, "Start"] ->
+                      {
+                        EdgeStyle ->
+                          {
+                            Arrowheads @ {
                               {
-                                getStartPoint @ #1,
-                                unless[First @ #1,
-                                  {_, _},
-                                  DynamicLocation["VertexID$" <> ToString @ verts @ x, Automatic, Automatic]
-                                ]
-                              }
-                            ]&)
-                        }],
-                    DirectedEdge[_, _, "Start"] ->
+                                -1,
+                                Automatic,
+                                {Graphics[], 0.5}
+                              },
+                              Small
+                            },
+                            $epsilonGray
+                          },
+                        Splice @ initEdgeRules
+                      },
+                    DirectedEdge[x_, _, "Start"] :>
                       {
                         Splice @ initEdgeRules,
-                        EdgeShapeFunction -> (Arrow[{getStartPoint @ #1, First @ #1}]&)
+                        EdgeShapeFunction ->
+                          (
+                            Arrow @ {
+                              getStartPoint @ #1,
+                              UnlessMatch[First @ #1,
+                                {_, _},
+                                DynamicLocation[
+                                  "VertexID$" <> ToString @ verts @ x,
+                                  Automatic,
+                                  Automatic
+                                ]
+                              ]
+                            } &
+                          )
                       }
-                  ]
+                  ],
+                  DirectedEdge[_, _, "Start"] ->
+                    {
+                      Splice @ initEdgeRules,
+                      EdgeShapeFunction ->
+                        (
+                          Arrow @ {
+                            getStartPoint @ #1,
+                            First @ #1
+                          } &
+                        )
+                    }
                 ]
-              }
-          ]
+              ]
+            }
         ]
-        ,
-        "Automaton" -> A
-      ]
+      ],
+      "Automaton" -> A
     ]
   ];
 
 PackageExport["FAGraph3D"]
 FAGraph3D::usage = "\
-FAGraph3D[A$, opts$$] produces a Graph3D of the automaton A$ with options opts$$.
+FAGraph3D[A$, opts$$] produces a Graph3D of the automaton A$ with options opts$.
 * opts$ can contain any option recognized by Graph3D.
-* This is equivalent to Graph3D[A$, opts$$] when A$ satisfies FAExpressionQ.
+* This is equivalent to Graph3D[A$, opts$] when A$ satisfies FAExpressionQ.
 FAGraph3D takes the same options as FAGraph.";
 Options[FAGraph3D] =
   {
@@ -255,10 +323,10 @@ OptionChecks[FAGraph3D] = {"InitialArrows" -> True | False | Automatic};
 FAGraph3D[A_?FAQ, opts : OptionsPattern[{FAGraph3D, Graph3D}]] :=
   Graph3D @ FAGraph[
     A,
-    EdgeStyle -> unlessAutomatic[OptionValue @ EdgeStyle, GrayLevel[0, 0.7`]],
-    "EpsilonEdgeStyle" -> unlessAutomatic[OptionValue @ "EpsilonEdgeStyle", $epsilonGray],
+    EdgeStyle -> UnlessAutomatic[OptionValue @ EdgeStyle, GrayLevel[0, 0.7`]],
+    "EpsilonEdgeStyle" -> UnlessAutomatic[OptionValue @ "EpsilonEdgeStyle", $epsilonGray],
     "InitialArrows" -> OptionValue @ "InitialArrows",
-    "InitialArrowStyle" -> unlessAutomatic[OptionValue @ "InitialArrowStyle", $epsilonGray],
+    "InitialArrowStyle" -> UnlessAutomatic[OptionValue @ "InitialArrowStyle", $epsilonGray],
     opts
   ];
 
@@ -278,7 +346,7 @@ makeThumbnail[A_?FAQ] :=
     makeThumbnail[A] =
       Deploy @ With[{graph = quickGraph @ FAExpression @ A},
         Show[graph,
-          PlotRange -> squareRange[absOpt[graph, PlotRange], "Max"],
+          PlotRange -> squareRange[AbsoluteOption[graph, PlotRange], "Max"],
           PlotRangePadding -> Scaled[.05],
           PlotRangeClipping -> True,
           Frame -> True,
@@ -291,6 +359,30 @@ makeThumbnail[A_?FAQ] :=
       DFA, $defaultDFAIcon,
       NFA, $defaultNFAIcon
     ]
+  ];
+
+PackageScope["setGraphProperties"]
+setGraphProperties::usage = "setGraphProperties[A, prop -> val, ...] sets GraphProperties for A used by FAGraph";
+setGraphProperties[(head : NFA | DFA)[asc_], rules__] :=
+  head @ Association[
+    asc,
+    "GraphProperties" ->
+      Association[
+        Lookup[asc, "GraphProperties", <||>],
+        rules
+      ]
+  ];
+
+PackageScope["getGraphProperty"]
+SetAttributes[getGraphProperty, HoldRest];
+getGraphProperty[(head : NFA | DFA)[asc_], prop_, default_] :=
+  If[KeyExistsQ[asc, "GraphProperties"],
+    Lookup[
+      asc @ "GraphProperties",
+      prop,
+      default
+    ],
+    default
   ];
 
 recomputeThumbnail[A_?FAQ] := (makeThumbnail[A] =. ; A);
@@ -339,12 +431,11 @@ doubleCircle[{x_, y_, z_}, v_, {w_, h_, b_}, d_ : 0.1] :=
     }
   };
 
-
 doubleCircle[d_] := doubleCircle[##, d] &;
 
-automatonEdgeLabel[background_, style_ : Nothing][elabel_] :=
+edgeLabelFunction[background_, style_ : Nothing] :=
   Framed[
-    Replace[elabel,
+    Replace[#,
       {
         x_List :> Row[x, ","],
         Style[x_List, rest___] :> Style[Row[x, ","], rest]
@@ -355,20 +446,28 @@ automatonEdgeLabel[background_, style_ : Nothing][elabel_] :=
       AutoSpacing -> False
     },
     FrameStyle -> None,
-    Background -> unless[background, None, White],
+    Background -> UnlessMatch[background, None, White],
     FrameMargins -> 2,
     ContentPadding -> False,
     RoundingRadius -> Scaled[0.5]
-  ];
+  ] &;
 
-toEdges[DFAState[id_, d_, ___]] :=
+vertexLabelFunction =
+  Which[ (* lists of lists are common, we don't want sporadic matrix formatting *)
+    MatrixQ[#], Style /@ #,
+    MatchQ[#, _Style] && MatrixQ @ First[#], MapAt[Map @ Style, #, 1],
+    True, #
+  ] &;
+
+
+toEdges[DFA, q_, trns_] :=
   KeyValueMap[
-    DirectedEdge[id, #1, #2]&,
-    GroupBy[d, Identity, Keys]
+    DirectedEdge[q, #1, #2]&,
+    GroupBy[trns, Identity, Keys]
   ];
-toEdges[NFAState[id_, d_, ___]] :=
+toEdges[NFA, q_, trns_] :=
   Catenate[
-    KeyValueMap[DirectedEdge[id, ##] &,
+    KeyValueMap[DirectedEdge[q, ##] &,
       Merge[
         Catenate[
           Thread[Reverse@#, List, 1]& /@
@@ -377,66 +476,92 @@ toEdges[NFAState[id_, d_, ___]] :=
         Identity]
     ]& /@
       {
-        KeyDrop[d, Epsilon],
-        KeyTake[d, Epsilon]
+        KeyDrop[trns, Epsilon],
+        KeyTake[trns, Epsilon]
       }
   ];
 
 quickGraph[nfa_NFA, opts : OptionsPattern[Graph]] :=
   With[{n = StateCount @ nfa},
-    Graph[StateNames @ nfa,
+    Graph[States @ nfa,
       (*for each state, convert \[Delta] to list of distinct untagged edges, removing loops*)
       Catenate[
-        Function[
-          s,
-          DirectedEdge[StateName @ s, #]& /@
-            DeleteCases[
-              Join[
-                Union @@ StateTransitions[
-                  s,
-                  DeleteCases[Keys @ s, Epsilon]
-                ],
-                s @ Epsilon
-              ],
-              StateName @ s
-            ]
-        ] /@ StateList @ nfa],
+        KeyValueMap[
+          Function[{q, trs},
+            DirectedEdge[q, #]& /@
+              DeleteCases[
+                Union @@ trs,
+                q
+              ]
+          ],
+          Transitions @ nfa
+        ]
+      ],
       opts,
       PlotTheme -> "Minimal",
       BaseStyle -> {EdgeForm[]},
       VertexStyle -> {RGBColor[0.97`, 0.606`, 0.081`],
-        toAlternatives @ StateNames[nfa, "Initial"] ->
+        toAlternatives @ States[nfa, "Initial"] ->
           RGBColor[0.181864`, 0.66664`, 0.869788`]},
-      VertexSize -> If[n == 1, 1, {"Scaled", 1 / (2 n^0.8)}],
+      VertexSize ->
+        If[n == 1,
+          1,
+          {"Scaled", 1 / (2 n^0.8)}
+        ],
       EdgeStyle -> Directive[Thickness[0.02], GrayLevel[0.3, 1 / n^0.5]],
       EdgeShapeFunction -> "Line",
-      PerformanceGoal -> "Speed"]];
+      PerformanceGoal -> "Speed",
+      AnnotationRules ->
+        With[{gprops = nfa[[1]]["Annotations", "GraphProperties"]},
+          If[MissingQ @ gprops,
+            {},
+            {"GraphProperties" -> gprops}
+          ]
+        ]
+    ]
+  ];
 
 quickGraph[dfa_DFA, opts : OptionsPattern[Graph]] :=
   With[{n = StateCount[dfa]},
-    Graph[ StateNames @ dfa,
+    Graph[
+      States @ dfa,
       (*for each state, convert to list of distinct untagged edges, removing loops*)
       Catenate[
-        Function[
-          s,
-          DirectedEdge[StateName @ s, #]& /@
-            DeleteDuplicates @ DeleteCases[Values @ s, StateName @ s]
-        ] /@ StateList @ dfa
+        KeyValueMap[
+          Table[
+            DirectedEdge[#1, t],
+            {t, DeleteDuplicates @ DeleteCases[#2, #1]}
+          ]&,
+          Transitions @ dfa
+        ]
       ],
       opts,
+      GraphLayout -> UnlessMatch[
+        dfa[[1]]["Annotations", GraphLayout],
+        _Missing,
+        Automatic
+      ],
       PlotTheme -> "Minimal",
       BaseStyle -> {EdgeForm[]},
       VertexStyle ->
         {
           RGBColor[0.475184`, 0.592896`, 0.919488`],
-          toAlternatives @ StateNames[dfa, "Initial"] -> RGBColor[1, 0.5, 0.5]
+          toAlternatives @ States[dfa, "Initial"] -> RGBColor[1, 0.5, 0.5]
         },
       VertexSize -> If[n == 1, 1, {"Scaled", 1 / (2 n^0.8)}],
       EdgeStyle -> Directive[Thickness[0.02], GrayLevel[0.3`, 1 / n^0.5]],
       EdgeShapeFunction -> "Line",
-      PerformanceGoal -> "Speed"
+      PerformanceGoal -> "Speed",
+      AnnotationRules ->
+        With[{gprops = dfa[[1]]["Annotations", "GraphProperties"]},
+          If[MissingQ @ gprops,
+            {},
+            {"GraphProperties" -> gprops}
+          ]
+        ]
     ]
   ];
+
 
 graphRegexArray[arr_] :=
   Graph[

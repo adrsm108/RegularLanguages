@@ -28,18 +28,15 @@ If[UseNotation =!= False, LoadNotation[]];
 Needs["GeneralUtilities`"];
 Scan[
   Function[name,
-    Function[x,
-      x::usage = GeneralUtilities`SetUsage[x, x::usage], HoldAll
-    ] @@ MakeExpression[name, StandardForm];
-    Protect[name];
+    If[GeneralUtilities`HasUsageStringQ[name],
+      Function[x,
+        x::usage = GeneralUtilities`SetUsage[x, x::usage], HoldAll
+      ] @@ MakeExpression[name, StandardForm];
+    ];
+    SetAttributes[name, {Protected, ReadProtected}];
   ],
   Names["RegularLanguages`*"]
 ];
 
-Unprotect[UseNotation];
-(*Protect[Evaluate @ Names["RegularLanguages`*"]];*)
-
-(*<<RegularLanguages.m*)
-(*RegularLanguages`LoadNotation[True];*)
-
+ClearAttributes[UseNotation, {Protected, ReadProtected}];
 

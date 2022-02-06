@@ -16,444 +16,328 @@ Package["RegularLanguages`"]
 PackageImport["Developer`"]
 
 (* ::Section:: *)
-(* Predicates *)
+(* Package Export *)
 
-PackageExport["StateQ"]
-StateQ::usage = "StateQ[expr] returns True if expr has head NFAState or DFAState";
-StateQ[_DFAState | _NFAState] = True;
-StateQ[_] = False;
-
-PackageExport["TerminalStateQ"]
-TerminalStateQ::usage = "TerminalStateQ[state] gives True if state is a terminal dfa or nfa state.";
-TerminalStateQ[(DFAState | NFAState)[_, _, {_, True}]] = True;
-TerminalStateQ[(DFAState | NFAState)[_, _, True]] = True;
-TerminalStateQ[_] = False;
-
-PackageExport["InitialStateQ"]
-InitialStateQ::usage = "InitialStateQ[state] returns True if state is initial.";
-InitialStateQ[(DFAState | NFAState)[_, _, {True, _}]] = True;
-InitialStateQ[_] = False;
+(* ::Subsection:: *)
+(* FAQ *)
 
 PackageExport["FAQ"]
-FAQ::usage = "FAQ[A] yields True if A is a valid representation of a finite automaton.";
+FAQ::usage = "FAQ[A$] yields True if A$ is a valid representation of an NFA or DFA.";
 FAQ[A_DFA] := DFAQ @ A;
 FAQ[A_NFA] := NFAQ @ A;
 FAQ[G_Graph] := FAGraphQ @ G;
 FAQ[_] = False;
 
+(* ::Subsection:: *)
+(* FAGraphQ *)
+
 PackageExport["FAGraphQ"]
 FAGraphQ::usage = "FAGraphQ[G$] yields True if G$ is a graph with a valid 'Automaton' annotation.";
-FAGraphQ[g_Graph] := FAQ[Quiet @ AnnotationValue[g, "Automaton"]];
+FAGraphQ[g_Graph] := FAQ @ Quiet @ AnnotationValue[g, "Automaton"];
 FAGraphQ[_] = False;
 
-PackageExport["FAExpressionQ"]
-FAExpressionQ::usage = "FAExpressionQ[A] returns True if A is a valid Automaton with head NFA or DFA.";
-FAExpressionQ[NFA[_?nfaAscQ] | DFA[_?dfaAscQ]] = True;
-FAExpressionQ[_] = False;
+(* ::Subsection:: *)
+(* FAExpressionQ *)
 
-PackageExport["EmptyFAQ"]
-EmptyFAQ::usage = "EmptyFAQ[A] returns True if A is an automaton whose language an empty set.";
-EmptyFAQ[A_?FAQ] :=
-  With[{groupfn = If[DFAQ @ A, DeleteDuplicates, Apply[Union]],
-    states = States @ A, terms = StateNames[A, "Terminal"]},
-    Or[terms === {},
-      ! Module[{mark},
-        mark[id_] := Or[
-          mark[id] = MemberQ[terms, id],
-          AnyTrue[groupfn @ Values @ states @ id, mark]];
-        AnyTrue[StateNames[A, "Initial"], mark]]]];
-EmptyFAQ[_] = False;
+PackageExport["FAExpressionQ"]
+FAExpressionQ::usage = "FAExpressionQ[A$] returns True if A$ is a valid automaton with head NFA or DFA.";
+FAExpressionQ[A_] :=
+  MatchQ[A, NFA[_?nfaAscQ] | DFA[_?dfaAscQ]];
+
+
+(* ::Subsection:: *)
+(* UniversalFAQ *)
 
 PackageExport["UniversalFAQ"]
-UniversalFAQ::usage = "UniversalFAQ[A] yields True if A is an automaton which accepts all strings over its alphabet.";
-UniversalFAQ[A_?FAQ] := EmptyFAQ[FAComplement[A]];
+UniversalFAQ::usage = "UniversalFAQ[A$] yields True if A$ is an automaton which accepts all strings over its alphabet.";
+UniversalFAQ[A_?FAQ] := EmptyLanguageQ @ FAComplement @ A;
 UniversalFAQ[_] = False;
 
 PackageExport["EquivalentFAQ"]
 EquivalentFAQ::usage = "\
-EquivalentFAQ[A1, A2] is True if A1 and A2 are automata that recognize the same language.
-EquivalentFAQ[A1, A2, ...] yields true if all Ai are equivalent automata.
-EquivalentFAQ[A] yields true if A is an automaton.";
+EquivalentFAQ[A$1, A$2] is True if A$1 and A$2 are automata that recognize the same language.
+EquivalentFAQ[A$1, A$2, $$] yields true if all A$i are equivalent automata.
+EquivalentFAQ[A$] yields true if A$ is an automaton.";
 EquivalentFAQ[A1_?FAQ, A2_?FAQ] := productStateTerminalPairNoneTrue[A1, A2, Xor];
 EquivalentFAQ[A_?FAQ] = True;
 EquivalentFAQ[_, _] = False;
-EquivalentFAQ[Ai : Repeated[_, {3, Infinity}]] := With[
-  {m = First @ MinimalBy[{Ai}, StateCount]},
-  AllTrue[DeleteCases[{Ai}, m], EquivalentFAQ[m, #] &]
-];
+EquivalentFAQ[Ai : Repeated[_, {3, Infinity}]] :=
+  With[
+    {
+      m = First @ MinimalBy[{Ai}, StateCount]
+    },
+    AllTrue[
+      DeleteCases[{Ai}, m],
+      EquivalentFAQ[m, #]&
+    ]
+  ];
+
+(* ::Subsection:: *)
+(* SubsetFAQ *)
 
 PackageExport["SubsetFAQ"]
 SubsetFAQ::usage = "\
-SubsetFAQ[A1, A2] returns True if the language recognized by automaton A1 is a subset of the language recognized by automaton A2.
-SubsetFAQ[A, A1, A2, ...] yields True if SubsetFAQ[A, Ai] is true for all Ai.
-SubsetFAQ[A] represents an operator form of SubsetFAQ that can be applied to an expression.";
-SubsetFAQ[A1_?FAQ, A2_?FAQ] := productStateTerminalPairNoneTrue[A1, A2, #1 && ! #2 &];
+SubsetFAQ[A$1, A$2] returns True if the language recognized by automaton A1 is a subset of the language recognized by automaton A2.
+SubsetFAQ[A$, A$1, A$2, $$] yields True if SubsetFAQ[A$, A$i] is true for all A$i.
+SubsetFAQ[A$] represents an operator form of SubsetFAQ that can be applied to an expression.";
+SubsetFAQ[A1_?FAQ, A2_?FAQ] := productStateTerminalPairNoneTrue[A1, A2, (#1 && !#2 &)];
 SubsetFAQ[_, _] = False;
 SubsetFAQ[A1_][A2_] := SubsetFAQ[A1, A2];
 SubsetFAQ[A_, Ai : Repeated[_, {2, Infinity}]] := AllTrue[{Ai}, SubsetFAQ[A]];
 
-(* ::Section:: *)
-(* Accessors *)
+(* ::Subsection:: *)
+(* FAMatchQ *)
+
+PackageExport["FAMatchQ"]
+FAMatchQ::usage = "\
+FAMatchQ[A$, {a$1, a$2, $$}] returns True if the finite automaton A$ accepts the string of symbols a$1 a$2 $$
+FAMatchQ[A$, 'string'] is equivalent to FAMatchQ[A$, Characters['string']]";
+FAMatchQ[A_, str_String] :=
+  FAMatchQ[A, Characters @ str];
+
+(* ::Subsection:: *)
+(* FAExpression *)
 
 PackageExport["FAExpression"]
-FAExpression::usage = "FAExpression[A$] returns A$ as an automaton with head NFA or DFA.";
+FAExpression::usage = "FAExpression[A$] returns automaton A$ as an expression with head NFA or DFA.";
 FAExpression::inv = "FAExpression expects an automaton expression, or Graph with an 'Automaton' annotation, but recieved `1`.";
 FAExpression[A : (_NFA | _DFA)] := A;
 FAExpression[g_] :=
-  when[_?FAExpressionQ,
+  IfMatch[_?FAExpressionQ,
     Quiet @ AnnotationValue[g, "Automaton"],
-    Message[FAExpression::inv, HoldForm[FAExpression[g]], g, "Automaton"]; $Failed
+    Failure[
+      "InvalidInput",
+      <|
+        "MessageTemplate" -> "Input must be a valid automaton or a Graph with valid \"Automaton\" annotation."
+      |>
+    ]
   ];
+
+(* ::Subsection:: *)
+(* FAType *)
 
 PackageExport["FAType"]
 FAType::usage = "FAType[A$] returns DFA if A$ is a DFA, or NFA if A$ is an NFA.";
-FAType[A_?FAQ] := Head @ FAExpression[A];
+FAType[A_?FAQ] := Head @ FAExpression @ A;
 
-PackageExport["StateTransitions"]
-StateTransitions::usage = "\
-StateTransitions[dfastate$] gives the transition table for a DFAState as the association <|a$1 -> q$1, ...|>, \
-where a$i is an alphabet symbol, and q$i is the name of a state.
-StateTransitions[nfastate$] gives the transition table for an NFAState as the association <|a$1 -> list$1, ...|>, \
-where a$i is an alphabet symbol, and list$i is a list of state names.
-StateTransitions[state$, spec$$] is equivalent to Lookup[StateTransitions[state$], spec$$].
-StateTransitions[{state$1, state$2, $$}, spec$$] is equivalent to \
-Lookup[{StateTransitions[state$1], StateTransitions[state$2], $$}, spec$$], provided all state$i have the same head.";
-StateTransitions[(DFAState | NFAState)[_, d_, ___]] := d;
-StateTransitions[(DFAState | NFAState)[_, d_, ___], rest__] := Lookup[d, rest];
-StateTransitions[states : {___DFAState | ___NFAState}, rest__] := Lookup[states[[All, 2]], rest];
 
-PackageExport["StateName"]
-StateName::usage = "StateName[state$] returns the name of state$, where state$ is a valid DFAState or NFAState.";
-SetAttributes[StateName, Listable];
-StateName[(DFAState | NFAState)[id_, _, ___]] := id;
-
-PackageExport["StateSuccessors"]
-StateSuccessors::usage = "\
-StateSuccessors[state$] returns the names of states to which state$ has an outgoing transition.
-StateSuccessors[state$, {symbols$$}] returns the names of states to which state$ has an outgoing transition on the given symbols$.";
-StateSuccessors[NFAState[_, d_, ___], (All | PatternSequence[])] :=
-  Union @@ Values @ d;
-StateSuccessors[NFAState[_, d_, ___], symbols_List] :=
-  Union @@ Lookup[d, symbols, {}];
-StateSuccessors[DFAState[_, d_, ___], (All | PatternSequence[])] :=
-  DeleteDuplicates @ Values @ d;
-StateSuccessors[DFAState[_, d_, ___], symbols_List] :=
-  DeleteDuplicates @ Lookup[d, symbols];
-StateSuccessors[symbols : (_List | All)][s_?StateQ] :=
-  StateSuccessors[s, symbols];
+(* ::Subsection:: *)
+(* States *)
 
 PackageExport["States"]
 States::usage = "\
-States[A$] returns an association <|id$ -> $state, ...|> of all states in the finite automaton A$.
-States[A$, prop$] returns an association <|id$ -> state$, ...|> of states in A$ with the property prop$.
-* Valid properties include 'Initial', 'Noninitial', 'Terminal', 'Nonterminal', 'Reachable', and 'Unreachable'.";
+States[A$] returns a list of state names for the DFA or NFA A$.
+States[A$, 'prop$'] returns the states of A$ with the given property.
+* Valid properties include 'Initial', 'Noninitial', 'Terminal', 'Nonterminal', 'Reachable', and 'Unreachable'.
+States['prop$'] represents an operator form of States.";
 States::invprop = "Unknown property `1`.";
+SetAttributes[States, Listable];
 States[DFA[asc_?dfaAscQ] | NFA[asc_?nfaAscQ]] :=
-  asc @ "states";
-States[DFA[asc_?dfaAscQ] | NFA[asc_?nfaAscQ], prop_] :=
+  asc @ "States";
+States[
+  DFA[asc_?dfaAscQ] | NFA[asc_?nfaAscQ],
+  prop_?(
+    loudly[
+      MatchQ[
+        "Initial"
+          | "Terminal"
+          | "Noninitial"
+          | "Nonterminal"
+          | "Reachable"
+          | "Unreachable"
+      ],
+      States::invprop
+    ]
+  )
+] :=
   Switch[prop,
-    "Initial", KeyTake[asc @ "states", asc @ "initial"],
-    "Terminal", KeyTake[asc @ "states", asc @ "terminal"],
-    "Noninitial", KeyDrop[asc @ "states", asc @ "initial"],
-    "Nonterminal", KeyDrop[asc @ "states", asc @ "terminal"],
-    "Reachable", KeyTake[asc @ "states", TransitiveClosure[asc @ "initial", asc @ "states"]],
-    "Unreachable", KeyDrop[asc @ "states", TransitiveClosure[asc @ "initial", asc @ "states"]],
-    _, Message[States::invprop, prop]
-  ];
+    "Initial",
+    asc @ "Initial",
 
-PackageExport["StateList"]
-StateList::usage = "\
-StateList[A$] returns a list of states in automaton A$.
-StateList[A$, prop$] returns returns a list of states in automaton A$ with the property prop$.
-* See usage of States for valid properties.
-* StateList[A$, prop$] is equivalent to Values[States[A$, prop$]], but more efficient.";
-StateList::invprop = "Unknown property `1`.";
-StateList[DFA[asc_?dfaAscQ] | NFA[asc_?nfaAscQ]] :=
-  Values @ asc @ "states";
-StateList[DFA[asc_?dfaAscQ] | NFA[asc_?nfaAscQ], prop_] :=
-  Switch[prop,
-    "Initial", Lookup[asc @ "states", asc @ "initial"],
-    "Terminal", Lookup[asc @ "states", asc @ "terminal"],
-    "Noninitial", Lookup[asc @ "states", Complement[Keys @ asc @ "states", asc @ "initial"]],
-    "Nonterminal", Lookup[asc @ "states", Complement[Keys @ asc @ "states", asc @ "terminal"]],
-    "Reachable", Lookup[asc @ "states", TransitiveClosure[asc @ "initial", asc @ "states"]],
-    "Unreachable",
-    Lookup[asc @ "states",
-      Complement[
-        Keys @ asc @ "states",
-        TransitiveClosure[asc @ "initial", asc @ "states"]
-      ]
+    "Terminal",
+    asc @ "Terminal",
+
+    "Noninitial",
+    Complement[
+      asc @ "States",
+      asc @ "Initial"
     ],
-    _, Message[StateNames::invprop, prop]
-  ];
-StateList[g_Graph?FAGraphQ, rest___] :=
-  StateList[FAExpression @ g, rest];
 
-PackageExport["StateNames"]
-StateNames::usage = "\
-StateNames[A$] returns a list of state names for the DFA or NFA A.
-StateNames[A$, prop$] gives the StateNames for states with property prop.
-* See usage of States for valid properties.";
-StateNames::invprop = "Unknown property `1`.";
-SetAttributes[StateNames, Listable];
-StateNames[DFA[asc_?dfaAscQ] | NFA[asc_?nfaAscQ]] :=
-  Keys @ asc @ "states";
-StateNames[DFA[asc_?dfaAscQ] | NFA[asc_?nfaAscQ], prop_] :=
-  Switch[prop,
-    "Initial", asc @ "initial",
-    "Terminal", asc @ "terminal",
-    "Noninitial", Complement[Keys @ asc @ "states", asc @ "initial"],
-    "Nonterminal", Complement[Keys @ asc @ "states", asc @ "terminal"],
-    "Reachable", TransitiveClosure[asc @ "initial", asc @ "states"],
-    "Unreachable", Complement[Keys @ asc @ "states", TransitiveClosure[asc @ "initial", asc @ "states"]],
-    _, Message[StateNames::invprop, prop]
-  ];
-StateNames[g_Graph?FAGraphQ, rest___] :=
-  StateNames[FAExpression @ g, rest];
+    "Nonterminal",
+    Complement[
+      asc @ "States",
+      asc @ "Terminal"
+    ],
 
-PackageExport["StateIndices"]
-StateIndices::usage = "\
-StateIndices[A$] returns the association <|q$1 -> index$1, q$2 -> index$2, $$|>, where q$i is the name of a state in A$, \
-and index$i is its position in States[A$].";
-SetAttributes[StateIndices, Listable];
-StateIndices[DFA[asc_?dfaAscQ] | NFA[asc_?nfaAscQ]] :=
-  First /@ PositionIndex[Keys @ asc @ "states"];
-StateIndices[g_Graph?FAGraphQ] :=
-  StateIndices[FAExpression @ g];
+    "Reachable",
+    ReachableStates[
+      asc @ "Initial",
+      asc @ "Transitions"
+    ],
+
+    "Unreachable",
+    Complement[
+      asc @ "States",
+      ReachableStates[
+        asc @ "Initial",
+        asc @ "Transitions"
+      ]
+    ]
+  ];
+States[g_Graph?FAGraphQ, rest___] := States[FAExpression @ g, rest];
+States[prop_String][A_] := States[A, prop];
+
+(* ::Subsection:: *)
+(* StateCount *)
 
 PackageExport["StateCount"]
 StateCount::usage = "\
 StateCount[A$] returns the number of states in the automaton A$.
-StateCount[A$, prop] returns the number of states in A$ with property prop$.
-* See usage of States for valid properties.";
+StateCount[A$, 'prop$'] returns the number of states in A$ with the given property.
+* See usage of States for valid properties.
+StateCount['prop$'] represents an operator form of StateCount.";
 StateCount::invprop = "Unknown property `1`.";
 SetAttributes[StateCount, Listable];
 StateCount[DFA[asc_?dfaAscQ] | NFA[asc_?nfaAscQ]] :=
-  Length[asc @ "states"];
+  Length @ asc @ "States";
 StateCount[DFA[asc_?dfaAscQ] | NFA[asc_?nfaAscQ], prop_] :=
   Switch[prop,
-    "Initial", Length @ asc @ "initial",
-    "Terminal", Length @ asc @ "terminal",
-    "Noninitial", Length @ asc @ "states" - Length @ asc @ "initial",
-    "Nonterminal", Length @ asc @ "states" - Length @ asc @ "terminal",
-    "Reachable", Length @ TransitiveClosure[asc @ "initial", asc @ "states"],
-    "Unreachable", Length @ asc @ "states" - Length @ TransitiveClosure[asc @ "initial", asc @ "states"],
+    "Initial",
+    Length @ asc @ "Initial",
+
+    "Terminal",
+    Length @ asc @ "Terminal",
+
+    "Noninitial",
+    Length @ asc @ "States" - Length @ asc @ "Initial",
+
+    "Nonterminal",
+    Length @ asc @ "States" - Length @ asc @ "Terminal",
+
+    "Reachable",
+    Length @ ReachableStates[
+      asc @ "Initial",
+      asc @ "Transitions"
+    ],
+
+    "Unreachable",
+    Length @ asc @ "States" -
+      Length @ ReachableStates[
+        asc @ "Initial",
+        asc @ "Transitions"
+      ],
+
     _, Message[StateCount::invprop, prop]
   ];
 StateCount[g_Graph?FAGraphQ, rest___] := StateCount[FAExpression @ g, rest];
+StateCount[prop_String][A_] := StateCount[A, prop];
 
-(* ::Section:: *)
-(* Mutators *)
+(* ::Subsection:: *)
+(* ReachableStates *)
 
-PackageExport["AddTransitions"]
-AddTransitions::usage = "\
-AddTransitions[nfastate, a -> {q1, q2, ...}] returns an NFAState s where s[a] = Union[nfastate[a], {q1, q2, ...}]
-AddTransitions[nfastate, {a1 -> {q1, q2, ...}, ...}] returns an NFAState with the specified transitions added.
-AddTransitions[rules] returns an operator form of AddTransitions.";
-AddTransitions[NFAState[id_, d_, rest___], trns : _Rule | KeyValuePattern[{}]] :=
-  NFAState[id, Merge[{d, trns}, Apply[Union]], rest];
-AddTransitions[trns : _Rule | KeyValuePattern[{}]] := OperatorApplied[AddTransitions][trns];
-
-PackageExport["SetInitial"]
-SetInitial::usage = "\
-SetInitial[A$, {states$}] returns a copy of the finite automaton A$ whose initial states are {states$}.
-SetInitial[state$, bool$] returns a copy of state$ where InitialStateQ[SetInitial[state$, bool$]] == bool$.
-SetInitial[bool$] is an operator form of SetInitial that can be applied to states." ;
-SetInitial[s : (NFAState | DFAState)[_, _], init : (True | False)] :=
-  Append[s, {init, False}];
-SetInitial[s : (NFAState | DFAState)[_, _, {_, term_} | term_], init : (True | False)] :=
-  ReplacePart[s, 3 -> {init, term}];
-SetInitial[init_][s_] :=
-  SetInitial[s, init];
-
-PackageExport["SetTerminal"]
-SetTerminal::usage = "\
-SetTerminal[state, bool] returns a copy of state with the property that TerminalStateQ[SetTerminal[state, bool]] = bool.
-SetTerminal[bool] is an operator form of SetTerminal that can be applied to states.";
-SetTerminal[s : (NFAState | DFAState)[_, _], term_] :=
-  Append[s, {False, term}];
-SetTerminal[s : (NFAState | DFAState)[_, _, {init_, _}], term_] :=
-  ReplacePart[s, 3 -> {init, term}];
-SetTerminal[s : (NFAState | DFAState)[_, _, _], term_] :=
-  ReplacePart[s, 3 -> {False, term}];
-SetTerminal[term_][s_] :=
-  SetTerminal[s, term];
-
-PackageExport["SetTerminal"]
-SetInitialTerminal::usage = "\
-SetInitialTerminal[state$, {init$, term$}] returns a copy of state$, s$, where InitialStateQ[s$] == init$ and TerminalStateQ[s$] == term$.
-SetInitialTerminal[{init$, term$}] is an operator form of SetInitialTerminal that can be applied to states.";
-SetInitialTerminal[s : (NFAState | DFAState)[_, _], term_] :=
-  Append[s, {False, term}];
-SetInitialTerminal[s : (NFAState | DFAState)[_, _, {init_, _}], term_] :=
-  ReplacePart[s, 3 -> {init, term}];
-SetInitialTerminal[s : (NFAState | DFAState)[_, _, _], term_] :=
-  ReplacePart[s, 3 -> {False, term}];
-SetInitialTerminal[term_][s_] :=
-  SetTerminal[s, term];
-
-
-PackageExport["UpdateFA"]
-UpdateFA::usage = "UpdateFA[A$, prop$ -> val$, $$] returns a new automaton A$ with the given properties.";
-UpdateFA::invprop = "Unknown property `1`.";
-UpdateFA[A_?FAQ, newRules : KeyValuePattern[{}]?validUpdateRulesQ] :=
-  With[{newInits = Lookup[newRules, "Initial"], newTerms = Lookup[newRules, "Terminal"]},
-    Switch[FAType[A],
-      NFA,
-      DFA,
-      With[{
-        newInitsMissing = MissingQ @ newInits,
-        newTermsMissing = MissingQ @ newTerms,
-        states = States @ A,
-        inits = StateNames[A, "Initial"],
-        terms = StateNames[A, "Terminal"]},
-        DFA[
-          "initial" -> Check[
-            If[newInitsMissing, inits,
-              If[loudly[validDFAInitQ, DFA::badinit]@newInits,
-                If[KeyExistsQ[states, First @ newInits],
-                  newInits,
-                  Message[DFA::invinit, First @ newInits]; Throw[$Failed]]
-              ]],
-            Throw[$Failed]
-          ],
-          "terminal" -> If[newTermsMissing, terms,
-            If[And @@ loudly[KeyExistsQ[states, #]&, DFA::invterm] /@ newTerms,
-              newTerms,
-              Throw[$Failed]]],
-          "alphabet" -> LanguageAlphabet[A],
-          "states" -> MapAt[states,
-            (applyIf[!newTermsMissing, Set])
-            ,
-            Key /@ Union[
-              If[MissingQ @ newTerms, {}, Union[newTerms, terms]],
-              If[MissingQ @ newInits, {}, Union[newInits, inits]]
-            ]]
-
-        ]
-
-      ]
-    ]
+PackageExport["ReachableStates"]
+ReachableStates::usage = "\
+ReachableStates[{q$}, A$] returns the set of states reachable from state q$ in finite automaton A$ by any sequence of transitions.
+ReachableStates[{q$1, q$2, $$}, A$] returns ReachableStates[q$1,A$] \[Union] ReachableStates[q$2, A$] \[Union] $$
+ReachableStates[A$] returns the set of states reachable from the initial states of the finite automaton A$.
+ReachableStates[states$, trns$] returns states reachable from $states according to the transitions trns$.
+* trns$ can be a TransitionFunction, or a list or association with elements q$ -> trns$q, where trn$q is an association or list of rules of the form a$ -> res$ such that res$ is the result of transitioning from q$ on symbol a$.
+ReachableStates[$$, {a$1, a$2, $$}] finds states reachable via any sequence of transitions restricted to the symbols a$1, a$2, $$.
+Options:
+'TransitionType' -> DFA | NFA | Automatic
+Used to specify whether the entries in a transition table are states or sets of states. Automatically set when the input is a NFA or DFA.
+* Automatic: Assume nondeterministic transitions if entries in transition table are lists. This fails if state names are themselves lists.";
+ReachableStates::invstate = "State `1` not found.";
+OptionChecks[ReachableStates] = { "TransitionType" -> NFA | DFA | Automatic };
+Options[ReachableStates] = { "TransitionType" -> Automatic };
+ReachableStates[{}, ___] = {};
+ReachableStates[
+  A_?FAQ,
+  rest___
+] :=
+  ReachableStates[
+    States[A, "Initial"],
+    Transitions @ A,
+    rest,
+    "TransitionType" -> FAType @ A
   ];
-
-validUpdateRulesQ[x_] :=
-  With[{remaining = KeyDrop[x, {"Initial", "Terminal"}]},
-    If[Length @ remaining == 0, True,
-      Scan[Message[UpdateFA::invprop, #]&, Keys @ remaining]; False]];
-
-
-PackageExport["RenameStates"]
-RenameStates::usage = "\
-RenameStates[A$, f$] returns an automaton isomorphic to A$, with state ids {f$[q$1], f$[q$2], $$}, \
-where {q$1, q$2, $$} are the original state ids of A$.";
-RenameStates[A_?FAQ, f_] :=
-  FAType[A][
-    "states" -> Association @@ (updateStateRule[f] /@ States @ A),
-    "initial" -> f /@ StateNames[A, "Initial"],
-    "terminal" -> f /@ StateNames[A, "Terminal"],
-    "alphabet" -> LanguageAlphabet @ A
+ReachableStates[states_List, A_?FAQ, rest___] :=
+  ReachableStates[
+    states,
+    Transitions @ A,
+    rest,
+    "TransitionType" -> FAType @ A
   ];
-
-PackageExport["DeleteUnreachableStates"]
-DeleteUnreachableStates::usage = "\
-DeleteUnreachableStates[A$] returns an automaton whose state set is exactly TransitiveClosure[A$]";
-DeleteUnreachableStates[A_?FAQ] :=
-  With[{tc = TransitiveClosure @ A},
-    If[Length @ tc == StateCount @ A, A,
-      FAType[A][
-        "states" -> KeyTake[States @ A, tc],
-        "initial" -> StateNames[A, "Initial"],
-        "terminal" -> Intersection[StateNames[A, "Terminal"], tc],
-        "alphabet" -> LanguageAlphabet @ A]]];
-
-PackageExport["IndexFA"]
-IndexFA::usage = "\
-IndexFA[A$] returns a version of $A where the name of each state is its index in StateList[A$].";
-IndexFA[A_?FAQ] := RenameStates[A, StateIndices @ A];
-
-PackageExport["ReindexFA"]
-ReindexFA::usage = "\
-ReindexFA[A$] returns an automaton similar to A$, but whose states are renamed with positive integers in depth-first search order.
-* By default, the returned automaton includes only those states which are reachable from the initial.
-ReindexFA[A$, True] returns the same, but also keeps disconnected components. The resulting automaton is isomorphic to A$.";
-ReindexFA[A_?FAQ, allComponents_ : False] :=
-  Module[{newinits, convert, i = 1, oldstates = States[A],
-    newstates = CreateDataStructure["HashTable"]},
-    convert[id_] := With[{newid = (convert[id] = i++)},
-      newstates["Insert", newid -> updateState[oldstates[id], convert]];
-      newid];
-    newinits = convert /@ StateNames[A, "Initial"];
-    While[allComponents,
-      convert @ First[Complement[Keys @ oldstates, specificArguments[convert]], Break[]]];
-    With[{states = Normal @ newstates},
-      FAType[A][
-        "states" -> states,
-        "initial" -> newinits,
-        "terminal" -> (convert[id_] = Nothing; convert /@ StateNames[A, "Terminal"]) ,
-        "alphabet" -> If[allComponents, LanguageAlphabet[A], Union @@ (Keys /@ states)]
-      ]]
-  ];
-
-PackageExport["TransitiveClosure"]
-TransitiveClosure::usage = "\
-TransitiveClosure[q$, A$] returns the ids of states in the transitive closure of state q$ in the finite automaton A$.
-* This is the set of states reachable from q$ by any sequence of transitions.
-TransitiveClosure[{q$1, q$2, ...}, A$] returns TransitiveClosure[q$1,A$] \[Union] TransitiveClosure[q$2, A$] \[Union] ...
-TransitiveClosure[A$] returns the transitive closure of the initial states of A$.
-TransitiveClosure[states$, transitions$] returns the transitive closure of $states according to the given transition specifications.
-* transitions$ should be an association or list with elements of the form id$ -> t$id, where t$id is the transition table of state id$ as an association or list of rules.
-TransitiveClosure[$$, {a$1, a$2, $$}] finds a transitive closure over the symbols a$1, a$2, $$.
-* This is a transitive closure restricted to transitions on a$i.";
-TransitiveClosure::invstate = "State `1` not found.";
-TransitiveClosure[{}, ___] = {};
-TransitiveClosure[A_?FAQ, syms_List : All] :=
-  TransitiveClosure[StateNames[A, "Initial"], States @ A, syms];
-TransitiveClosure[states : {(_DFAState | _NFAState)..}, rest___] :=
-  TransitiveClosure[StateName[states], rest];
-TransitiveClosure[ids_List, A_?FAQ, syms_List : All] :=
-  TransitiveClosure[ids, States @ A, syms];
-TransitiveClosure[id : Except[_List], rest__] :=
-  TransitiveClosure[{id}, rest];
-TransitiveClosure[ids_List, rules : {(_ -> _) ...}, syms_List : All] :=
-  TransitiveClosure[ids, Association @ rules, syms];
-TransitiveClosure[ids_List, Q_Association, syms : (_List | All) : All] :=
-  Reap[
-    Module[{push},
+ReachableStates[states_List, TransitionFunction[type_, trns_], rest___] :=
+  ReachableStates[states, trns, rest, "TransitionType" -> type];
+ReachableStates[states_List, rules : {___Rule}, rest___] :=
+  ReachableStates[states, Association @ rules, rest];
+ReachableStates[
+  ids_List,
+  trns_Association,
+  syms : (_List | All) : All,
+  CheckedOptions @ ReachableStates
+] :=
+  Sort @ Module[{push},
+    Reap[
       With[
         {
-          succs = Which[
-            syms === All,
-            Values,
-
-            AllTrue[Q, StateQ],
-            StateTransitions[#, syms, Nothing]&,
-
-            True,
-            Lookup[#, syms, Nothing]&
-          ],
-          lvl = Switch[Q, <|(_ -> (_[(_ -> _List) ...] | _NFAState)) ...|>, {2}, _, {1}],
-          state = Lookup[Q, Key @ #, Message[TransitiveClosure::invstate, #]; {}] &,
-          queue = CreateDataStructure["Queue", (push[Sow[#]] = Null; #) & /@ ids]
+          successors =
+            If[syms === All,
+              Values,
+              Lookup[#, syms, Nothing]&
+            ],
+          lvl =
+            Switch[OptionValue @ "TransitionType",
+              NFA, {2},
+              DFA, {1},
+              Automatic,
+              Switch[trns,
+                <|(_ -> _[(_ -> _List) ...])...|>, {2},
+                _, {1}
+              ]
+            ] ,
+          state = Lookup[
+            trns,
+            Key @ #,
+            Message[ReachableStates::invstate, #];
+            {}
+          ] &,
+          queue =
+            CreateDataStructure["Queue",
+              (push[Sow @ #] = Null; #)& /@ ids
+            ]
         },
-        push[id_] := push[Sow[id]] = (queue["Push", id];);
-        While[!queue["EmptyQ"],
-          Scan[push, succs @ state @ queue["Pop"], lvl]
+        push[id_] := (
+          push[Sow @ id] = Null;
+          queue["Push", id];
+        );
+        While[! queue @ "EmptyQ",
+          Scan[
+            push,
+            successors @ state @ queue["Pop"],
+            lvl
+          ]
         ]
       ]
-    ]
-  ][[2, 1]];
+    ][[2, 1]]
+  ];
+
+
+(* ::Subsection:: *)
+(* EpsilonReachableStates *)
 
 PackageExport["EpsilonClosure"]
 EpsilonClosure::usage = "\
-EpsilonClosure[q$, A$] gives the \[CurlyEpsilon]-closure---the transitive closure over Epsilon---of state q$ in automaton A$.
-EpsilonClosure[{q$1, q$2, ...}, A$] gives EpsilonClosure[q$1, A$] \[Union] EpsilonClosure[q$2, A$] \[Union] $$
-EpsilonClosure[A$] computes the \[CurlyEpsilon]-closure of the initial states of A$.
-EpsilonClosure[states$, transitions$] finds the \[CurlyEpsilon]-closure of states$ in transitions$, where transitions$ \
-can be any transition specification recognized by TransitiveClosure.";
-EpsilonClosure[A_?FAQ] :=
-  TransitiveClosure[StateNames[A, "Initial"], States @ A, {Epsilon}];
+EpsilonClosure[q$, nfa$] gives the set of states reachable from q$ in nfa$ via any sequence of Epsilon transitions.
+EpsilonClosure[{q$1, q$2, $$}, nfa$] gives EpsilonClosure[q$1, nfa$] \[Union] EpsilonClosure[q$2, nfa$] \[Union] $$
+EpsilonClosure[nfa$] gives EpsilonClosure[States[nfa$, 'Initial'], nfa$].
+EpsilonClosure[states$, trns$] computes the epsilon closure of states$ using transition table trns$, which may be \
+can be any transition specification recognized by ReachableStates.";
+EpsilonClosure[nfa_?NFAQ] :=
+  ReachableStates[nfa, {Epsilon}];
 EpsilonClosure[states_, transitions_] :=
-  TransitiveClosure[states, transitions, {Epsilon}];
+  ReachableStates[states, transitions, {Epsilon}, "TransitionType" -> NFA];
 
 PackageExport["StatesPartition"]
 StatesPartition::usage = "\
@@ -461,7 +345,7 @@ StatesPartition[dfa$] returns a list of partition blocks for the states of dfa$ 
 p$ ~ q$ iff there exists no string over the alphabet that is accepted starting from p$ but rejected starting from q$, \
 or rejected from p$ but accepted from q$.";
 StatesPartition[dfa_?DFAQ, indices_ : False] :=
-  applyIf[indices, Map[StateNames[dfa, "Index"], #, {-1}]&,
+  Cond[indices, Map[States[dfa, "Index"], #, {-1}]&] @
     Module[{equivQ},
       equivQ[x_, x_] = True;
       equivQ[___] = False;
@@ -469,51 +353,312 @@ StatesPartition[dfa_?DFAQ, indices_ : False] :=
       With[
         {
           alph = LanguageAlphabet @ dfa,
-          states = States @ dfa,
+          trns = Transitions @ dfa,
           partition =
             CreateDataStructure[
               "DisjointSet", (* Apparently doesn't like packed arrays *)
-              Developer`FromPackedArray @ Transpose @ List @ StateNames @ dfa
+              Developer`FromPackedArray @ Transpose @ List @ States @ dfa
             ]
         },
         Scan[
           Apply[partition["Unify", ##]&],
           FixedPoint[
             Select[
-              (equivQ[Sequence @@ #] =
-                AllTrue[
-                  Transpose @ Lookup[StateTransitions /@ Lookup[states, #], alph],
-                  Apply @ equivQ
-                ])&
+              (
+                equivQ[Sequence @@ #] =
+                  AllTrue[
+                    Transpose @ Lookup[Lookup[trns, #], alph],
+                    Apply @ equivQ
+                  ]
+              )&
             ],
             (equivQ[Sequence @@ #] = True; #)& /@
               Catenate[
-                Subsets[#, {2}]& /@ StateNames[dfa, {"Terminal", "Nonterminal"}]
+                Subsets[#, {2}]& /@
+                  States[dfa, {"Terminal", "Nonterminal"}]
               ]
           ]
         ];
         partition @ "Subsets"
       ]
+    ];
+
+(* ::Subsection:: *)
+(* Transitions *)
+
+PackageExport["Transitions"]
+Transitions::usage = "\
+Transitions[dfa$] returns the transitions of dfa$ as a nested association of the form <|q$ -> <|a$ -> r$, $$|>, $$|>, \
+where q$ and r$ are states and a$ an alphabet symbol.
+Transitions[nfa$] returns the transitions of nfa$ as a nested association of the form <|q$ -> <|a$ -> {r$1, r$2, $$}, $$|>, $$|>, \
+where q$ and r$i are states and a$ an alphabet symbol.
+Transitions[tf$] returns transitions for the TransitionFunction tf$.";
+SetAttributes[Transitions, Listable];
+Transitions[DFA[asc_?dfaAscQ]] := asc @ "Transitions";
+Transitions[NFA[asc_?nfaAscQ]] := asc @ "Transitions";
+Transitions[TransitionFunction[NFA | DFA, trns_]] := trns;
+Transitions[g_Graph?FAGraphQ, rest___] := Transitions[FAExpression @ g, rest];
+
+(* ::Subsection:: *)
+(* TransitionFunction *)
+PackageExport["TransitionFunction"]
+TransitionFunction::usage = "\
+TransitionFunction[A$] returns a TransitionFunction for the automaton A$.
+TransitionFunction[dfa$][q$, a$] returns the state reached by transitioning from state q$ on symbol a$, or Undefined if no such transition exists.
+TransitionFunction[nfa$][q$, a$] returns the list of states reached by transitioning from state q$ on symbol a$, or {} if no such transition exists.
+TransitionFunction[$$][{q$, a$}] is equivalent to TransitionFunction[$$][q$, a$].
+TransitionFunction automatically maps over lists of states and symbols:
+* tf$[{q$1, q$2, $$}, a$] returns the list {tf$[q$1, a], tf$[q$2, a] $$}.
+* tf$[q$, {a$1, a$2, $$}] returns the list {tf$[q$, a$1], tf$[q$, a$2] $$}.
+* tf$[{q$1, q$2, $$}, {a$1, a$2, $$}] returns the array {{tf$[q$1, a$1], tf$[q$1, a$2], $$}, {tf$[q$2, a$1], tf$[q$2, a$2], $$}, $$}.
+* Symbols or states which are themselves lists may be wrapped in Key to avoid threading, as in tf$[Key[{$$}], Key[{$$}]].";
+TransitionFunction[A_?FAQ] :=
+  TransitionFunction[FAType @ A, Transitions @ A];
+TransitionFunction[type : (NFA | DFA), trns_][q_, a_] :=
+  Lookup[
+    Lookup[
+      trns,
+      q,
+      <||>
+    ],
+    a,
+    If[type === NFA, {}, Undefined]
+  ];
+
+tf_TransitionFunction[{q_, a_}] := tf[q, a];
+TransitionFunction /: MakeBoxes[tf : TransitionFunction[DFA | NFA, _Association], form : (StandardForm | TraditionalForm)] :=
+  makeTransitionFunctionSummaryBoxes[tf, form];
+
+(* ::Subsection:: *)
+(* TransitionSequence *)
+
+PackageExport["TransitionSequence"]
+TransitionSequence::usage = "\
+TransitionSequence[nfa$, {a$1, a$2, $$}] returns the sequence of transitions for the input string a$1 a$2 $$ as a list of lists of states.
+TransitionSequence[dfa$, {a$1, a$2, $$}] returns the sequence of transitions for the input string a$1 a$2 $$ as a list of states.
+TransitionSequence[A$, 'string$'] is equivalent to TransitionSequence[A$, Characters['string$']]
+TransitionSequence[spec$$, seq$] returns the subsequence of TransitionSequence[spec $$] specified by seq$ using the standard sequence specification.";
+TransitionSequence[A_, str_String, rest___] :=
+  TransitionSequence[A, Characters @ str, rest];
+
+(* ::Subsection:: *)
+(* UpdateFA *)
+
+PackageExport["UpdateFA"]
+UpdateFA::usage = "\
+UpdateFA[A$, prop$ -> val$] updates the property prop$ in the finite automaton A$.
+UpdateFA[A$, prop$1 -> val$1, prop$2 -> val$2, $$] updates multiple properties of A$ at once.
+
+Recognized properties are:
+* 'Initial' -> inits$: Set initial states of A$ to inits$.
+* 'Terminal' -> terms$: Set terminal states of A$ to terms$
+* 'Alphabet' -> {symbs$ $$}: Set the language alphabet of A$.
+    - If there are transitions defined on symbols not in {symbs$ $$}, these symbols will still be included in LanguageAlphabet[A$].
+    - Not supported for DFAs.
+* 'Transitions' -> {{q$, a$} -> x$, $$}: Set the transition from state q$ on symbol a$ to be x$.
+    - If A$ is a DFA, x$ should be a state.
+    - If A$ is an NFA, x$ should be a list of states.
+* 'AddTransitions' -> {{q$, a$} -> xs$, $$}: Add transitions from state q$ on symbol a$ to xs$.
+    - xs$ should be a list of states.
+    - Not supported for DFAs.
+* 'RemoveTransitions' -> {{q$, a$} -> xs$, $$}: Remove transitions from state q$ on symbol a$ to xs$.
+    - xs$ should be a list of states.
+    - {q$, a$} -> All removes all transitions from q$ on a$.
+    - Not supported for DFAs.";
+UpdateFA::invprop = "Unknown property ``.";
+UpdateFA::badNfaTrnRule = "Invalid transition specification. The right hand side of `` is not a list of states.";
+UpdateFA::badDfaInit = "Property \"Initial\" expected a list with exactly one state, but received ``.";
+UpdateFA::badNfaInit = "Property \"Initial\" expected a list of states, but received ``.";
+UpdateFA::badTerm = "Property \"Terminal\" expected a list of states, but received ``.";
+UpdateFA::badAlphabet = "Property \"Alphabet\" expected a list of symbols, but received ``.";
+UpdateFA::badDfaOp = "`` is not supported for DFAs. Try converting to an NFA first.";
+UpdateFA[
+  A_?FAQ,
+  props : __Rule?(
+    If[
+      MatchQ[
+        #[[1]],
+        "Transitions"
+          | "AddTransitions"
+          | "RemoveTransitions"
+          | "Initial"
+          | "Terminal"
+          | "Alphabet"
+      ],
+      True,
+      (
+        Message[UpdateFA::invprop, #[[1]]];
+        False
+      )
+    ] &
+  )
+] :=
+  Switch[FAType @ A,
+    NFA, updateNFA,
+    DFA, updateDFA
+  ][
+    FAExpression @ A,
+    Lookup[
+      GroupBy[
+        {props},
+        MatchQ[_?(StringEndsQ["Transitions"]) -> _]
+      ],
+      {True, False},
+      {}
     ]
   ];
+
+(* ::Subsection:: *)
+(* RenameStates *)
+
+PackageExport["RenameStates"]
+RenameStates::usage = "\
+RenameStates[A$, f$] returns an automaton equivalent to A$, with states {f$[q$1], f$[q$2], $$}, where {q$1, q$2, $$} are the original states of A$.
+RenameStates[A$, 'Index'] renames each state with its index in States[A$]
+RenameStates[A$, 'DepthFirstIndex'] renames states with positive integers in depth-first search order.";
+RenameStates[A_?FAQ, "Index"] :=
+  RenameStates[A, stateIndices @ A];
+RenameStates[A_?FAQ, "DepthFirstIndex"] :=
+  Module[
+    {
+      newinits, convert,
+      mapNames =
+        If[isDFA @ A,
+          Map,
+          Map[#1, #2, {2}]&
+        ] ,
+      i = 1,
+      trns = Transitions @ A,
+      newTrns = <||>
+    },
+    convert[id_] :=
+      With[{ newid = (convert[id] = i++) },
+        newTrns[newid] = mapNames[convert, trns @ id];
+        newid
+      ];
+    newinits = convert /@ States[A, "Initial"];
+    While[True,
+      convert @ First[
+        Complement[
+          States @ A,
+          specificArguments @ convert
+        ],
+        Break[]
+      ]
+    ];
+    makeFAType[A][
+      newTrns,
+      newinits,
+      convert /@ States[A, "Terminal"],
+      LanguageAlphabet @ A
+    ]
+  ];
+RenameStates[A_?FAQ, f_] :=
+  With[
+    {
+      type = FAType @ A,
+      asc = FAExpression[A][[1]]
+    },
+    If[type === NFA,
+      makeNFA,
+      makeDFA
+    ][
+      KeyMap[f,
+        Map[f,
+          Transitions @ A,
+          {
+            If[type === NFA, 3, 2]
+          }
+        ]
+      ],
+      f /@ States[A, "Initial"],
+      f /@ States[A, "Terminal"]
+    ]
+  ];
+
+(* ::Subsection:: *)
+(* RemoveUnreachableStates *)
+
+PackageExport["RemoveUnreachableStates"]
+RemoveUnreachableStates::usage = "\
+RemoveUnreachableStates[A$] returns an automaton whose states are ReachableStates[A$], i.e. A$ with unreachable states removed.";
+RemoveUnreachableStates[A_?FAQ] :=
+  With[{reachables = ReachableStates @ A},
+    If[Length @ reachables == StateCount @ A,
+      A,
+      makeFAType[A][
+        KeyTake[Transitions @ A, reachables],
+        States[A, "Initial"],
+        Intersection[States[A, "Terminal"], reachables],
+        LanguageAlphabet @ A
+      ]
+    ]
+  ];
+
+(* ::Subsection:: *)
+(* CreateUniqueState *)
+
+PackageExport["CreateUniqueState"]
+CreateUniqueState::usage = "\
+CreateUniqueState[] is equivalent to CreateUUID['state-'].
+CreateUniqueState[A$] returns an integer, string, or symbol suitable for use as a state name in the automaton A$.
+* The returned name attempts to follow the naming conventions of A$
+  - If every state in A$ is an integer, the generated name will be the integer one greater than the maximum state name in A$.
+  - If every state in A$ is a string, the generated name will be a string.
+  - If every state in A$ is a symbol, the generated name will be a symbol.
+  - If no simple convention is identified, the generated name will be a string obtained using CreateUUID.
+CreateUniqueState[$$, n$] generates a list of n$ state names.";
+CreateUniqueState[] := CreateUUID["state-"];
+CreateUniqueState[n_Integer] := Table[CreateUniqueState[], {n}];
+CreateUniqueState[A_?FAQ] := First @ CreateUniqueState[A, 1];
+CreateUniqueState[A_?FAQ, n_Integer?Positive] :=
+  With[{states = States @ A},
+    Switch[states,
+      {___Integer},
+      Array[
+        Identity,
+        n,
+        Max @ states + 1
+      ],
+
+      {___String},
+      extendStateNames[states, n],
+
+      {___Symbol},
+      extendStateNames[SymbolName /@ states, n, True],
+
+      _,
+      Table[
+        CreateUniqueState[],
+        {n}
+      ]
+    ]
+  ];
+
+(* ::Subsection:: *)
+(* FAComplement *)
 
 PackageExport["FAComplement"]
 FAComplement::usage = "\
 FAComplement[A$] returns an automaton of the same type as A$ for the complement of the language of A$.";
 FAComplement[A_?FAQ] :=
-  FAType[A][
-    "states" ->
-      Map[
-        updateState[#, Identity, {Automatic, !TerminalStateQ @ #}]&,
-        States @ A
-      ],
-    "initial" -> StateNames[A, "Initial"],
-    "terminal" -> StateNames[A, "Nonterminal"],
-    "alphabet" -> LanguageAlphabet @ A
+  With[
+    {
+      cfa = Cond[FAType @ A === NFA, CompleteNFA] @ A
+    },
+    makeFAType[cfa][
+      Transitions @ cfa,
+      States[cfa, "Initial"],
+      States[cfa, "Nonterminal"],
+      LanguageAlphabet @ cfa
+    ]
   ];
 
+(* ::Subsection:: *)
+(* FAReversal *)
+
 PackageExport["FAReversal"]
-FAReversal::usage = "FAReversal[A$] returns an NFA recognizing the reversal of the language of A$.";
+FAReversal::usage = "FAReversal[A$] returns an NFA recognizing the reversal of the language of automaton A$.";
 FAReversal[A_?FAQ] :=
   NFA[
     Merge[
@@ -523,156 +668,389 @@ FAReversal[A_?FAQ] :=
       ] @@@ ToRules @ FAExpression @ A,
       Merge[#, Identity] &
     ],
-    StateNames[A, "Terminal"],
-    StateNames[A, "Initial"]
+    States[A, "Terminal"],
+    States[A, "Initial"]
   ];
+
+(* ::Subsection:: *)
+(* FAIntersection *)
 
 PackageExport["FAIntersection"]
 FAIntersection::usage = "\
-FAIntersection[A$1, A$2, ...] returns a DFA for the intersection of the languages recognized by the A$i.";
+FAIntersection[A$1, A$2, $$] returns a DFA for the intersection of the languages of the automata A$i.";
 FAIntersection[A_?FAQ] := A;
 FAIntersection[dfas : Repeated[_?DFAQ, {2, Infinity}]] :=
-  productDFA[dfas, {Catenate[StateNames[{dfas}, "Initial"]]}, AllTrue[TerminalStateQ]];
-FAIntersection[Ai : Repeated[_?FAQ, {2, Infinity}]] :=
-  productDFA[Ai, {EpsilonClosure /@ {Ai}}, AllTrue[AnyTrue[TerminalStateQ]]];
-
-PackageExport["FAUnion"]
-FAUnion::usage = "\
-FAUnion[A$1, A$2, $$] returns a DFA for the union of the languages recognized by the A$i.";
-FAUnion[A_?FAQ] := A;
-FAUnion[dfas : Repeated[_?DFAQ, {2, Infinity}]] :=
-  productDFA[dfas, {Catenate[StateNames[{dfas}, "Initial"]]}, AnyTrue[TerminalStateQ]];
-FAUnion[Ai : Repeated[_?FAQ, {2, Infinity}]] :=
-  productDFA[Ai, {EpsilonClosure /@ {Ai}}, AnyTrue[AnyTrue[TerminalStateQ]]];
-
-PackageExport["FASymmetricDifference"]
-FASymmetricDifference::usage = "\
-FASymmetricDifference[A$1, A$2] returns a DFA for the symmetric difference of the languages recognized by A$1 and A$2.";
-FASymmetricDifference[dfas : Repeated[_?DFAQ, {2}]] :=
-  productDFA[dfas, {Catenate[StateNames[{dfas}, "Initial"]]}, Xor @@ (TerminalStateQ /@ #) &];
-ASymmetricDifference[Ai : Repeated[_?FAQ, {2}]] :=
-  productDFA[Ai, {EpsilonClosure /@ {Ai}}, Xor @@ (AnyTrue[TerminalStateQ] /@ #) &];
-
-PackageExport["FAConcat"]
-FAConcat::usage = "\
-FAConcat[A$1, A$2, $$] gives an NFA accepting the concatenation of the languages recognized by the A$i.";
-FAConcat[Ai : Repeated[_?FAQ, {2, Infinity}]] :=
-  With[{nfas = NFA /@ {Ai}, n = Length @ {Ai}},
-    NFA[
-      "states" ->
-        Join @@ MapIndexed[
-          Function[{nfa, pos},
-            With[
-              {
-                itrules =
-                  Switch[pos,
-                    {1}, {Automatic, False},
-                    {n}, {False, Automatic},
-                    _, {False, False}],
-                i = First @ pos
-              },
-              applyIf[i < n,
-                MapAt[
-                  AddTransitions[
-                    Epsilon -> (
-                      Subscript[#, i + 1]& /@ StateNames[nfas[[i + 1]], "Initial"]
-                    )
-                  ],
-                  {Key @ Subscript[#, i]}& /@ StateNames[nfa, "Terminal"]
-                ],
-                Association @ Map[
-                  updateStateRule[Subscript[#, i]&, itrules], StateList @ nfa
-                ]
-              ]
-            ]
-          ],
-          nfas
-        ],
-      "initial" -> Thread @ Subscript[StateNames[nfas[[1]], "Initial"], 1],
-      "terminal" -> Thread @ Subscript[StateNames[nfas[[n]], "Terminal"], n],
-      "alphabet" -> Union @@ (LanguageAlphabet /@ nfas)
+  productDFA[
+    dfas,
+    Catenate @ States[{dfas}, "Initial"],
+    makeTerminalPredicate[
+      States[{dfas}, "Terminal"],
+      And,
+      MemberQ
+    ]
+  ];
+FAIntersection[As : Repeated[_?FAQ, {2, Infinity}]] :=
+  productDFA[
+    As,
+    EpsilonClosure /@ {As},
+    makeTerminalPredicate[
+      States[{As}, "Terminal"],
+      And,
+      ContainsAny
     ]
   ];
 
+(* ::Subsection:: *)
+(* FAUnion *)
+
+PackageExport["FAUnion"]
+FAUnion::usage = "\
+FAUnion[A$1, A$2, $$] returns a DFA for the union of the languages of the automata A$i.";
+FAUnion[A_?FAQ] := A;
+FAUnion[dfas : Repeated[_?DFAQ, {2, Infinity}]] :=
+  productDFA[
+    dfas,
+    Catenate[States[{dfas}, "Initial"]],
+    makeTerminalPredicate[
+      States[{dfas}, "Terminal"],
+      Or,
+      MemberQ
+    ]
+  ];
+FAUnion[As : Repeated[_?FAQ, {2, Infinity}]] :=
+  productDFA[
+    As,
+    EpsilonClosure /@ {As},
+    makeTerminalPredicate[
+      States[{As}, "Terminal"],
+      Or,
+      ContainsAny
+    ]
+  ];
+
+(* ::Subsection:: *)
+(* FADifference *)
+
+PackageExport["FADifference"]
+FADifference::usage = "\
+FADifference[A$, B$1, B$2, $$] returns an NFA for the language consisting of words accepted by A$ and not accepted by any of the automata B$i.";
+FADifference[A_?FAQ, Bs__?FAQ] :=
+  FAIntersection[
+    A,
+    FAComplement @ FAUnion @ Bs
+  ];
+
+(* ::Subsection:: *)
+(* FASymmetricDifference *)
+
+PackageExport["FASymmetricDifference"]
+FASymmetricDifference::usage = "\
+FASymmetricDifference[A$1, A$2] returns a DFA for the symmetric difference of the languages of automata A$1 and A$2.";
+FASymmetricDifference[dfas : Repeated[_?DFAQ, {2}]] :=
+  productDFA[
+    dfas,
+    Catenate[States[{dfas}, "Initial"]],
+    makeTerminalPredicate[
+      States[{dfas}, "Terminal"],
+      Xor,
+      MemberQ
+    ]
+  ];
+FASymmetricDifference[As : Repeated[_?FAQ, {2}]] :=
+  productDFA[
+    As,
+    EpsilonClosure /@ {As},
+    makeTerminalPredicate[
+      States[{As}, "Terminal"],
+      Xor,
+      ContainsAny
+    ]
+  ];
+
+(* ::Subsection:: *)
+(* FAConcatenation *)
+
+PackageExport["FAConcatenation"]
+FAConcatenation::usage = "\
+FAConcatenation[A$1, A$2, $$] gives an NFA accepting the concatenation of the languages of automata A$i.";
+FAConcatenation[As : Repeated[_?FAQ, {2, Infinity}]] :=
+  With[
+    {
+      nfas =
+        MapIndexed[
+          RenameStates[
+            ToNFA @ #1,
+            With[{i = First @ #2},
+              Subscript[#, i]&
+            ]
+          ]&,
+          {As}
+        ],
+      n = Length @ Unevaluated @ As
+    },
+    NFA[
+      Join @@ Table[
+        If[i < n,
+          With[
+            {
+              nextInits = States[nfas[[i + 1]], "Initial"]
+            },
+            MapAt[
+              Merge[
+                {
+                  #,
+                  <|Epsilon -> nextInits|>
+                },
+                Apply @ Union
+              ] &,
+              Transitions @ nfas[[i]],
+              List @* Key /@ States[nfas[[i]], "Terminal"]
+            ]
+          ],
+          Transitions @ nfas[[i]]
+        ],
+        {i, n}
+      ] ,
+      States[First @ nfas, "Initial"],
+      States[Last @ nfas, "Terminal"]
+    ]
+  ];
+
+(* ::Subsection:: *)
+(* FAClosure *)
+
 PackageExport["FAClosure"]
-FAClosure::usage = "FAClosure[A] returns an NFA for the closure of the language recognized by A with respect to concatenation.";
+FAClosure::usage = "FAClosure[A$] returns an NFA for the closure of the language of automaton A$ with respect to concatenation.";
 FAClosure[A_?FAQ] :=
   With[
     {
-      startid = Unique[],
-      terms = StateNames[A, "Terminal"],
-      critrule = Epsilon -> StateNames[A, "Initial"]
+      q0 = CreateUniqueState @ A,
+      nfa = ToNFA @ A,
+      type = FAType @ A,
+      terms = States[A, "Terminal"],
+      inits = States[A, "Initial"]
     },
-    NFA[
-      "states" ->
-        MapAt[
-          SetInitial @ False,
-          MapAt[
-            AddTransitions @ critrule,
-            States @ ToNFA @ A,
-            List @* Key /@ terms
-          ],
-          Transpose @ {Key /@ StateNames[A, "Initial"]}
-        ] ~ Append ~ (
-          startid ->
-            NFAState[startid, Association @ critrule, {True, True}]
-        ),
-      "initial" -> {startid},
-      "terminal" -> terms ~ Append ~ startid,
-      "alphabet" -> Union[LanguageAlphabet @ A, {Epsilon}]]
+    makeNFA[
+      Merge[
+        {
+          Transitions @ nfa,
+          <|q0 -> <|Epsilon -> inits|>|>,
+          AssociationMap[
+            (<|Epsilon -> {q0}|>)&,
+            terms
+          ]
+        },
+        Merge @ Apply @ Union
+      ],
+      {q0},
+      Append[terms, q0],
+      Union[LanguageAlphabet @ A, {Epsilon}]]
   ];
-(*
 
-NFATransitionFunction[trns_][stateArg_, symbArg_] :=
-  With[
-    {
-      states = If[ListQ @ stateArg, stateArg, {stateArg}],
-      symbols = If[ListQ @ symbArg, symbArg, {symbArg}]
-    },
-
-
-  ]
-
-*)
-
-PackageExport["TransitionFunction"]
-TransitionFunction::usage = "TransitionFunction[NFA, trns$] represents a nondeterministic transition function.";
-TransitionFunction[A_?FAQ] :=
-  TransitionFunction[FAType[A], StateTransitions /@ States @ A];
-TransitionFunction[type_, trns_][q_, a_] :=
-  Lookup[
-    Lookup[
-      trns,
-      when[_Key, q, Key @ q],
-      <||>
-    ],
-    when[_Key, a, Key @ a],
-    If[type === NFA, {}, Undefined]
-  ];
-TransitionFunction /: MakeBoxes[tf : TransitionFunction[_, _], form : (StandardForm | TraditionalForm)] :=
-  makeTransitionFunctionSummaryBoxes[tf, form];
-
-
+isDFA[A_] := FAType @ A === DFA;
+isNFA[A_] := FAType @ A === NFA;
 
 (* ::Section:: *)
-(* Private Functions *)
+(* Package Scope *)
+
+PackageScope["stateIndices"]
+stateIndices::usage = "StateIndices[A] returns the association <|q -> i, ...|>, where q are states in A, and i is the position of q in States[A]";
+stateIndices[A_] :=
+  First /@ PositionIndex @ States @ A;
+
+PackageScope["makeFAType"]
+makeFAType::usage = "makeFAType[A} returns makeNFA if A is an NFA, or makeDFA if A is a DFA.";
+makeFAType[A_] :=
+  Switch[FAType @ A,
+    NFA, makeNFA,
+    DFA, makeDFA
+  ];
+
+PackageScope["emptyFAQ"]
+emptyFAQ::usage = "emptyFAQ[A] returns true if A is an automaton whose language is {}";
+emptyFAQ[A_?FAQ] :=
+  With[
+    {
+      groupfn = If[DFAQ @ A, DeleteDuplicates, Apply @ Union],
+      terms = States[A, "Terminal"],
+      trns = Transitions @ A
+    },
+    Or[terms === {},
+      Not @ Module[{mark},
+        mark[id_] :=
+          Or[
+            mark[id] = MemberQ[terms, id],
+            AnyTrue[groupfn @ Values @ trns @ id, mark]
+          ];
+        AnyTrue[States[A, "Initial"], mark]
+      ]
+    ]
+  ];
+
+(* ::Section:: *)
+(* Private *)
 
 transitionsType[transitions_] :=
   Switch[transitions,
     <|(_ -> <|(_ -> _?(KeyExistsQ[transitions, #]&))...|>)...|>, DFA,
     <|(_ -> <|(_ -> {___?(KeyExistsQ[transitions, #]&)})...|>)...|>, NFA,
     _, None
-  ]
+  ];
 
-productStateTerminalPairNoneTrue[A1_, A2_, pred_] := Module[
-  {t1, t2},
-  t1[_] = False; Scan[(t1[#] = True) &, StateNames[A1, "Terminal"]];
-  t2[_] = False; Scan[(t2[#] = True) &, StateNames[A2, "Terminal"]];
-  Catch[scanProductDFA[
-    Apply[If[FAType[A1] === DFA === FAType[A2],
-      If[pred[t1[#1], t2[#2]], Throw[False]] &,
-      If[pred[AnyTrue[#1, t1], AnyTrue[#2, t2]], Throw[False]] &]],
-    A1, A2];
-  True]
-];
+indexSlotPart[x_, {i_}] := Hold[x, #1[[i]]];
 
+makeTerminalPredicate[termStates_, outer_, inner_] :=
+  With[
+    {
+      body = MapIndexed[indexSlotPart, termStates]
+    },
+    outer @@@ Apply[
+      inner,
+      body &,
+      {2}
+    ]
+  ];
+
+productStateTerminalPairNoneTrue[A1_, A2_, pred_] :=
+  Module[{t1, t2},
+    t1[_] = False;
+    Scan[
+      (t1[#] = True) &,
+      States[A1, "Terminal"]
+    ];
+    t2[_] = False;
+    Scan[(t2[#] = True)&,
+      States[A2, "Terminal"]
+    ];
+
+    Catch[
+      scanProductDFA[
+        Apply[
+          If[FAType[A1] === DFA === FAType[A2],
+            If[
+              pred[
+                t1 @ #1,
+                t2 @ #2
+              ],
+              Throw @ False
+            ]&,
+            If[
+              pred[
+                AnyTrue[#1, t1],
+                AnyTrue[#2, t2]
+              ],
+              Throw @ False
+            ]&
+          ]
+        ],
+        A1,
+        A2
+      ];
+      True
+    ]
+  ];
+
+commonPrefix[{s_, ss__String}] :=
+  With[
+    {
+      n = StringLength @ s,
+      strs = {ss}
+    },
+    Block[
+      {
+        np,
+        prefix = "",
+        i = 1
+      },
+      While[i <= n,
+        If[
+          AllTrue[
+            strs,
+            StringStartsQ[
+              np = StringTake[s, i++]
+            ]
+          ],
+          prefix = np,
+          Return @ prefix
+        ]
+      ];
+      prefix
+    ]
+  ];
+commonPrefix[symbs : {__Symbol}] := commonPrefix[SymbolName /@ symbs];
+
+extendStateNames[stringNames_, n_, symbols_ : False] :=
+  If[
+    !symbols &&
+      AllTrue[
+        stringNames,
+        StringMatchQ @ WordCharacter
+      ],
+    With[
+      {
+        charRange = MinMax[ToCharacterCode @ stringNames]
+      },
+      If[
+        Or[
+          (97 <= charRange[[1]] && charRange[[2]] + n <= 122),
+          (65 <= charRange[[1]] && charRange[[2]] + n <= 90)
+        ],
+        Array[
+          FromCharacterCode,
+          n,
+          charRange[[2]]
+        ],
+        Table[
+          CreateUUID[],
+          {n}
+        ]
+      ]
+    ],
+    With[
+      {
+        prefix = commonPrefix[stringNames]
+      },
+      If[StringLength @ prefix > 0,
+        If[symbols,
+          Unique @ ConstantArray[prefix, n],
+          With[
+            {
+              suffixes = StringReplace[stringNames, prefix -> ""]
+            },
+            If[
+              AllTrue[
+                suffixes,
+                StringMatchQ[DigitCharacter..]
+              ],
+              Array[
+                prefix <> ToString[#] &,
+                n,
+                Max[ToExpression /@ suffixes] + 1
+              ],
+              firstReaped[
+                Block[{i = 1, generated = 0},
+                  While[generated < n,
+                    If[!MemberQ[suffixes, ToString @ i],
+                      Sow[prefix <> ToString @ i, "gen"]
+                    ];
+                    i++
+                  ]
+                ],
+                "gen"
+              ]
+            ]
+          ]
+        ],
+        If[symbols,
+          Table[
+            Unique[],
+            {n}
+          ],
+          Table[
+            CreateUUID[],
+            {n}
+          ]
+        ]
+      ]
+    ]
+  ];
